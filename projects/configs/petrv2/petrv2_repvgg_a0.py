@@ -23,19 +23,26 @@ input_modality = dict(
     use_radar=False,
     use_map=False,
     use_external=True)
+onnx_split = 'transformer'
+# onnx_split = 'backbone'
+# batch_first = True
+#batch_first = False
 model = dict(
     type='Petr3D',
     use_grid_mask=True,
     img_backbone=dict(
-        type='VoVNetCP', ###use checkpoint to save memory
-        spec_name='V-99-eSE',
-        norm_eval=True,
-        frozen_stages=-1,
-        input_ch=3,
-        out_features=('stage4','stage5',)),
+        type='RepVGG', ###use checkpoint to save memory
+        num_blocks=[2, 4, 14, 1],
+        width_multiplier=[0.75, 0.75, 0.75, 2.5],
+        override_groups_map=None,
+        out_indices=(2, 3),
+        deploy=False,
+        # num_classes=1000,
+        # use_checkpoint=False
+        ),
     img_neck=dict(
         type='CPFPN',  ###remove unused parameters 
-        in_channels=[768, 1024],
+        in_channels=[192, 1280],
         out_channels=256,
         num_outs=2),
     pts_bbox_head=dict(
@@ -59,17 +66,22 @@ model = dict(
                 num_layers=6,
                 transformerlayers=dict(
                     type='PETRTransformerDecoderLayer',
+                    # batch_first=batch_first,
                     attn_cfgs=[
                         dict(
                             type='MultiheadAttention',
                             embed_dims=256,
                             num_heads=8,
-                            dropout=0.1),
+                            dropout=0.1,
+                            # batch_first=batch_first
+                            ),
                         dict(
                             type='PETRMultiheadAttention',
                             embed_dims=256,
                             num_heads=8,
-                            dropout=0.1),
+                            dropout=0.1,
+                            # batch_first=batch_first
+                            ),
                         ],
                     feedforward_channels=2048,
                     ffn_dropout=0.1,
@@ -108,6 +120,7 @@ model = dict(
             pc_range=point_cloud_range))))
 
 dataset_type = 'CustomNuScenesDataset'
+#data_root = '/data/Dataset/nuScenes/'
 data_root = 'data/nuscenes/'
 
 file_client_args = dict(backend='disk')
@@ -222,7 +235,7 @@ data = dict(
 
 optimizer = dict(
     type='AdamW', 
-    lr=2e-4,
+    lr=1e-4,
     paramwise_cfg=dict(
         custom_keys={
             'img_backbone': dict(lr_mult=0.1),
@@ -244,7 +257,8 @@ evaluation = dict(interval=24, pipeline=test_pipeline)
 find_unused_parameters=False #### when use checkpoint, find_unused_parameters must be False
 checkpoint_config = dict(interval=1, max_keep_ckpts=3)
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-load_from='ckpts/fcos3d_vovnet_imgbackbone-remapped.pth'
+# load_from='ckpts/fcos3d_vovnet_imgbackbone-remapped.pth'
+load_from='ckpts/RepVGG-A0-train.pth'
 resume_from=None
 
 # mAP: 0.4104
@@ -268,3 +282,4 @@ resume_from=None
 # bicycle 0.416   0.605   0.250   0.689   0.248   0.018
 # traffic_cone    0.555   0.545   0.321   nan     nan     nan
 # barrier 0.487   0.655   0.284   0.143   nan     nan
+
