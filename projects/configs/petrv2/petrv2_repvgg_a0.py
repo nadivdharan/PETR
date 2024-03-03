@@ -37,6 +37,7 @@ model = dict(
         override_groups_map=None,
         out_indices=(2, 3),
         deploy=False,
+        pretrained = 'ckpts/RepVGG-A0-train.pth'
         # num_classes=1000,
         # use_checkpoint=False
         ),

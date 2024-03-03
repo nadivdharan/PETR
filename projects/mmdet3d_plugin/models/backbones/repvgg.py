@@ -10,6 +10,7 @@ import copy
 # from se_block import SEBlock
 import torch.utils.checkpoint as checkpoint
 
+from mmcv.runner import BaseModule
 from mmdet.models.builder import BACKBONES
 
 def conv_bn(in_channels, out_channels, kernel_size, stride, padding, groups=1):
@@ -149,7 +150,8 @@ class RepVGGBlock(nn.Module):
 
 
 @BACKBONES.register_module()
-class RepVGG(nn.Module):
+# class RepVGG(nn.Module):
+class RepVGG(BaseModule):
 
     def __init__(self,
                  num_blocks,
@@ -159,8 +161,14 @@ class RepVGG(nn.Module):
                  out_indices=(3, ),
                  deploy=False,
                  use_se=False,
-                 use_checkpoint=False):
-        super(RepVGG, self).__init__()
+                 use_checkpoint=False,
+                 init_cfg=None,
+                 pretrained=None):
+        super(RepVGG, self).__init__(init_cfg)
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
         assert len(width_multiplier) == 4
         self.out_indices = out_indices
         self.deploy = deploy
