@@ -166,6 +166,7 @@ class RepVGG(BaseModule):
                  pretrained=None):
         super(RepVGG, self).__init__(init_cfg)
         if isinstance(pretrained, str):
+            import warnings
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
                           'please use "init_cfg" instead')
             self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)

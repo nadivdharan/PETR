@@ -1,54 +1,73 @@
-# Copyright (c) OpenMMLab. All rights reserved.
 import argparse
-# import time
+import sys
+from pathlib import Path
 import torch
 import os
-from mmcv import Config
-# from mmcv.parallel import MMDataParallel
-from mmcv.runner import load_checkpoint, wrap_fp16_model
-
-# from mmdet3d.datasets import build_dataloader, build_dataset
-from mmdet3d.models import build_detector
-# from mmdet3d.core import LiDARInstance3DBoxes
-
 import numpy as np
 import onnx
 from onnxsim import simplify
 
-onnx_split_choices = ['backbone', 'transformer']
+from mmcv import Config
+from mmcv.runner import load_checkpoint, wrap_fp16_model
+from mmdet3d.datasets import build_dataloader, build_dataset
+from mmdet3d.models import build_detector
+
+
+sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
+from projects.mmdet3d_plugin.models.detectors.petr3d import Petr3D
+
+
+class Petr3D_Split(Petr3D):
+    def __init__(self, split=None, cfg_dict=None):
+        super(Petr3D_Split, self).__init__(**cfg_dict)
+        self.onnx_split_choices = ['backbone', 'transformer']
+        assert split in self.onnx_split_choices, f"{split} is not one of {self.onnx_split_choices}"
+        self.split = split
+    
+    def forward(self, x, img_metas):
+        for var, name in [(img_metas, 'img_metas')]:
+            if not isinstance(var, list):
+                raise TypeError('{} must be a list, but got {}'.format(
+                    name, type(var)))
+        if self.split == 'backbone':
+            return self.foward_backbone(x, img_metas)
+        elif self.split == 'transformer':
+            return  self.foward_transformer(x, img_metas)
+        else:
+            raise ValueError(f"Unsupported split type {self.split}. Valid values are {self.onnx_split_choices}")
+
+    def foward_backbone(self, img, img_metas):
+        img = [img] if img is None else img
+        img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        return img_feats
+
+    def foward_transformer(self, img_feats, img_metas):
+        outs = self.pts_bbox_head(img_feats, img_metas)
+        return outs
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='MMDet deploy a model to ONNX format')
-    parser.add_argument('config', help='test config file path', default='./projects/configs/petrv2/petrv2_vovnet_gridmask_p4_800x320.py')
-    parser.add_argument('checkpoint', help='checkpoint file', default='./ckpts/epoch_24_petrv2.pth')
-    parser.add_argument('--no_simplify', action='store_false')
-    # parser.add_argument('--shape', nargs=2, type=int, default=[800, 1333])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config', help='model config path')
+    parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('-o', '--opset', type=int, default=13)
-    parser.add_argument('--split', default='transformer', type=str, help="Split backbone or transformer parts of model",
-                        choices=onnx_split_choices)
+    parser.add_argument('--split', default='transformer', type=str, help="Split and export backbone / transformer part of model",
+                        choices=['backbone', 'transformer'])
     parser.add_argument('--out_name', default='petr_v2.onnx', type=str, help="Name for the onnx output")
-
-    parser.add_argument(
-        '--fuse-conv-bn',
-        action='store_true',
-        help='Whether to fuse conv and bn, this will slightly increase'
-        'the inference speed')
     args = parser.parse_args()
     return args
 
 
-def main():
+def main(device='cpu'):
     args = parse_args()
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = 'cpu'
 
     cfg = Config.fromfile(args.config)
     cfg.model.pretrained = None
+    cfg.model.train_cfg = None
     cfg.data.test.test_mode = True
 
+    # sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
     # import modules from plguin/xx, registry will be updated
-    import ipdb; ipdb.set_trace()
     if hasattr(cfg, 'plugin'):
         if cfg.plugin:
             import importlib
@@ -60,8 +79,6 @@ def main():
 
                 for m in _module_dir[1:]:
                     _module_path = _module_path + '.' + m
-                print(_module_path)
-                # import ipdb; ipdb.set_trace()
                 plg_lib = importlib.import_module(_module_path)
             else:
                 # import dir is the dirpath for the config file
@@ -70,137 +87,79 @@ def main():
                 _module_path = _module_dir[0]
                 for m in _module_dir[1:]:
                     _module_path = _module_path + '.' + m
-                print(_module_path)
                 plg_lib = importlib.import_module(_module_path)
 
-    # # build the dataloader
-    # # TODO: support multiple images per gpu (only minor changes are needed)
-    # dataset = build_dataset(cfg.data.test)
-    # data_loader = build_dataloader(
-    #     dataset,
-    #     samples_per_gpu=1,
-    #     workers_per_gpu=cfg.data.workers_per_gpu,
-    #     dist=False,
-    #     shuffle=False)
-
     # build the model and load checkpoint
-    # import ipdb; ipdb.set_trace()
-    cfg.model.train_cfg = None
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
     fp16_cfg = cfg.get('fp16', None)
     if fp16_cfg is not None:
         wrap_fp16_model(model)
-    # load_checkpoint(model, args.checkpoint, map_location='cpu')
-    # if args.fuse_conv_bn:
-    #     model = fuse_module(model)
-
-    # model = MMDataParallel(model, device_ids=[0])
-
+    load_checkpoint(model, args.checkpoint, map_location='cpu')
     model.eval()
 
-    # the first several iterations may be very slow so skip them
-    # num_warmup = 5
-    # pure_inf_time = 0
-
-    # benchmark with several samples and take the average
-    # for i, data in enumerate(data_loader):
-
-    #     torch.cuda.synchronize()
-    #     start_time = time.perf_counter()
-
-    #     with torch.no_grad():
-    #         model(return_loss=False, rescale=True, **data)
-
-    #     torch.cuda.synchronize()
-    #     elapsed = time.perf_counter() - start_time
-
-    #     if i >= num_warmup:
-    #         pure_inf_time += elapsed
-    #         if (i + 1) % args.log_interval == 0:
-    #             fps = (i + 1 - num_warmup) / pure_inf_time
-    #             print(f'Done image [{i + 1:<3}/ {args.samples}], '
-    #                   f'fps: {fps:.1f} img / s')
-
-    #     if (i + 1) == args.samples:
-    #         pure_inf_time += elapsed
-    #         fps = (i + 1 - num_warmup) / pure_inf_time
-    #         print(f'Overall fps: {fps:.1f} img / s')
-    #         break
-
-    # dummy_input = torch.randn(6, 3, 224, 224)
-    if args.split == 'backbone':
-        img = [torch.zeros(1, 1, 3, 320, 800, dtype=torch.float32).to(device)]  # B, N, C, H, W  == [1, 12, 3, 320, 800]
-    elif args.split == 'transformer':
-        img = [torch.zeros(1, 12, 256, 20, 50, dtype=torch.float32).to(device),
-            torch.zeros(1, 12, 256, 10, 25, dtype=torch.float32).to(device)]
-    else:
-        raise ValueError(f"split arg {args.split} is not one of {onnx_split_choices}")
-    img_metas = np.load('img_metas.npy', allow_pickle=True).tolist()
-
-    # This part might be reduntant. might be that N=12 is a must to due previous frame
-    if img[0].shape[1] > 12:
-        raise ValueError("img_metas has only N = 12")
-    elif img[0].shape[1] < 12:
-        for k, v in img_metas[0][0].items():
-            if isinstance(v, list):
-                img_metas[0][0][k] = v[:img[0].shape[1]]
-    # import ipdb; ipdb.set_trace()
-    # Convert numpy arrays in img_metas to PyTorch tensors
+    # get example data from dataset
+    dataset = build_dataset(cfg.data.test)
+    data_loader = build_dataloader(
+        dataset,
+        samples_per_gpu=1,
+        workers_per_gpu=cfg.data.workers_per_gpu,
+        dist=False,
+        shuffle=False)
+    for i, data in enumerate(data_loader):
+        img_metas = data['img_metas'][0].data
+        img = data['img'][0].data[0].to(device)
+        if args.split == 'transformer':
+            B, N, C, H, W = img.shape
+            out_stride = 16
+            C = cfg.model.img_neck.out_channels
+            img = [torch.zeros(B, N, C, H//out_stride, W//out_stride),
+                   torch.zeros(B, N, C, H//(2*out_stride), W//(2*out_stride))]
+        break
+    
+    # convert img metas to torch tensors
     keys_to_remove = []
     for i in range(len(img_metas)):
         for j in range(len(img_metas[i])):
             for key, value in img_metas[i][j].items():
                 if isinstance(value, np.ndarray):
-                    print(f"{key=} is np array")
                     img_metas[i][j][key] = torch.from_numpy(value)
                 elif isinstance(value, list):
                     for k in range(len(value)):
                         if isinstance(value[k], np.ndarray):
-                            print(f"{key}[{k}] is np array")
-                            # if key == 'pad_shape':
-                            #     import ipdb; ipdb.set_trace()
                             img_metas[i][j][key][k] = torch.from_numpy(value[k])
                         elif isinstance(value, tuple):
-                            # import ipdb; ipdb.set_trace()
-                            print(f"pad shape is tuple {key}") 
                             img_metas[i][j][key][k] = torch.tensor(value[k])
                 elif isinstance(value, dict):
                     for kk, vv in value.items():
                         if isinstance(vv, np.ndarray):
-                            print(f"{key}[{kk}] is np array")
-                            # if key == 'pad_shape':
-                            #     import ipdb; ipdb.set_trace()
                             img_metas[i][j][key][kk] = torch.from_numpy(vv)
-                
                 elif isinstance(value, type):
-                    print(f"Removing {key} from img_metas[{i}][{j}]")
                     keys_to_remove.append(key)
     for remove in keys_to_remove:
         img_metas[0][0].pop(remove)
     img_metas[0][0]['box_mode_3d'] = int(img_metas[0][0]['box_mode_3d'])
-    print("******************")
-    for k, v in img_metas[0][0].items():
-        print(k, type(v))
     
-    # import ipdb; ipdb.set_trace()
+    # split backbone / transformer part of model
+    from projects.mmdet3d_plugin.models.backbones.repvgg import RepVGG, repvgg_model_convert
+    cfg.model.pop('type')
+    split_model = Petr3D_Split(args.split, cfg.model)
+    split_model.load_state_dict(model.state_dict())    
+    if isinstance(split_model.img_backbone, RepVGG):
+        img_backbone_deploy = repvgg_model_convert(model.img_backbone)
+        split_model.img_backbone = img_backbone_deploy
+        split_model.img_backbone.deploy = True
+    split_model.eval()
+
+    # export ONNX
     with torch.no_grad():
-        torch.onnx.export(model,
-                        (img_metas, img), args.out_name,  # (img_metas, img)
-                        #   input_names=['img'],
-                        #   output_names=['output'],
-                        # training=torch.onnx.TrainingMode.PRESERVE,
-                        do_constant_folding=False,
-                        opset_version=args.opset)  # args.opset
-        # if also simplify
-        if args.no_simplify:
-            model_onnx = onnx.load(args.out_name)
-            model_simp, check = simplify(model_onnx)
-            onnx.save(model_simp, args.out_name)
-            # runner.logger.info(f"Simplified model saved at: {args.out_name}")
-            print(f"Simplified model saved at: {args.out_name}")
-        else:
-            print(f"Model saved at: {args.out_name}")
-            # runner.logger.info(f"Model saved at: {args.out_name}")
+        torch.onnx.export(split_model,
+                          (img, img_metas[0]), args.out_name,
+                          do_constant_folding=False,
+                          opset_version=args.opset)
+        model_onnx = onnx.load(args.out_name)
+        model_simp, check = simplify(model_onnx)
+        onnx.save(model_simp, args.out_name)
+        print(f"Simplified model saved at: {args.out_name}")
 
 
 if __name__ == '__main__':
