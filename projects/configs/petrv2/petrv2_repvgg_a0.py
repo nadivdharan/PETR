@@ -23,19 +23,22 @@ input_modality = dict(
     use_radar=False,
     use_map=False,
     use_external=True)
+
 model = dict(
     type='Petr3D',
     use_grid_mask=True,
     img_backbone=dict(
-        type='VoVNetCP', ###use checkpoint to save memory
-        spec_name='V-99-eSE',
-        norm_eval=True,
-        frozen_stages=-1,
-        input_ch=3,
-        out_features=('stage4','stage5',)),
+        type='RepVGG', ###use checkpoint to save memory
+        num_blocks=[2, 4, 14, 1],
+        width_multiplier=[0.75, 0.75, 0.75, 2.5],
+        override_groups_map=None,
+        out_indices=(2, 3),
+        deploy=False,
+        pretrained = 'ckpts/RepVGG-A0-train.pth'
+        ),
     img_neck=dict(
         type='CPFPN',  ###remove unused parameters 
-        in_channels=[768, 1024],
+        in_channels=[192, 1280],
         out_channels=256,
         num_outs=2),
     pts_bbox_head=dict(
@@ -64,12 +67,14 @@ model = dict(
                             type='MultiheadAttention',
                             embed_dims=256,
                             num_heads=8,
-                            dropout=0.1),
+                            dropout=0.1,
+                            ),
                         dict(
                             type='PETRMultiheadAttention',
                             embed_dims=256,
                             num_heads=8,
-                            dropout=0.1),
+                            dropout=0.1,
+                            ),
                         ],
                     feedforward_channels=2048,
                     ffn_dropout=0.1,
@@ -222,7 +227,7 @@ data = dict(
 
 optimizer = dict(
     type='AdamW', 
-    lr=2e-4,
+    lr=1e-4,
     paramwise_cfg=dict(
         custom_keys={
             'img_backbone': dict(lr_mult=0.1),
@@ -244,27 +249,6 @@ evaluation = dict(interval=24, pipeline=test_pipeline)
 find_unused_parameters=False #### when use checkpoint, find_unused_parameters must be False
 checkpoint_config = dict(interval=1, max_keep_ckpts=3)
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-load_from='ckpts/fcos3d_vovnet_imgbackbone-remapped.pth'
+load_from='ckpts/RepVGG-A0-train.pth'
 resume_from=None
 
-# mAP: 0.4104
-# mATE: 0.7226
-# mASE: 0.2692
-# mAOE: 0.4529
-# mAVE: 0.3893
-# mAAE: 0.1933
-# NDS: 0.5025
-# Eval time: 206.1s
-
-# Per-class results:
-# Object Class    AP      ATE     ASE     AOE     AVE     AAE
-# car     0.581   0.536   0.149   0.076   0.347   0.190
-# truck   0.371   0.748   0.205   0.093   0.341   0.216
-# bus     0.442   0.703   0.204   0.097   0.758   0.256
-# trailer 0.231   1.031   0.237   0.690   0.270   0.136
-# construction_vehicle    0.129   1.064   0.494   1.175   0.138   0.356
-# pedestrian      0.485   0.676   0.293   0.535   0.443   0.186
-# motorcycle      0.407   0.663   0.255   0.579   0.569   0.190
-# bicycle 0.416   0.605   0.250   0.689   0.248   0.018
-# traffic_cone    0.555   0.545   0.321   nan     nan     nan
-# barrier 0.487   0.655   0.284   0.143   nan     nan

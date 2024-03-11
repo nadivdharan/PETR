@@ -359,7 +359,7 @@ class PETRv2Head(AnchorFreeHead):
         D = coords_d.shape[0]
         coords = torch.stack(torch.meshgrid([coords_w, coords_h, coords_d])).permute(1, 2, 3, 0) # W, H, D, 3
         coords = torch.cat((coords, torch.ones_like(coords[..., :1])), -1)
-        coords[..., :2] = coords[..., :2] * torch.maximum(coords[..., 2:3], torch.ones_like(coords[..., 2:3])*eps)
+        coords[..., :2] = coords[..., :2] * coords[..., 2:3]
 
         img2lidars = []
         for img_meta in img_metas:
@@ -484,7 +484,6 @@ class PETRv2Head(AnchorFreeHead):
         query_embeds = self.query_embedding(pos2posemb3d(reference_points))
         reference_points = reference_points.unsqueeze(0).repeat(batch_size, 1, 1) #.sigmoid()
         outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed, self.reg_branches)
-        outs_dec = torch.nan_to_num(outs_dec)
         
         if self.with_time:
             time_stamps = []
@@ -705,8 +704,6 @@ class PETRv2Head(AnchorFreeHead):
         loss_bbox = self.loss_bbox(
                 bbox_preds[isnotnan, :10], normalized_bbox_targets[isnotnan, :10], bbox_weights[isnotnan, :10], avg_factor=num_total_pos)
 
-        loss_cls = torch.nan_to_num(loss_cls)
-        loss_bbox = torch.nan_to_num(loss_bbox)
         return loss_cls, loss_bbox
     
     @force_fp32(apply_to=('preds_dicts'))

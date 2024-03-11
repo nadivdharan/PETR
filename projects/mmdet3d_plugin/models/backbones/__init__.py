@@ -6,5 +6,6 @@
 # ------------------------------------------------------------------------
 from .vovnet import VoVNet
 from .vovnetcp import VoVNetCP
-__all__ = ['VoVNet', 'VoVNetCP']
+from .repvgg import RepVGG
+__all__ = ['VoVNet', 'VoVNetCP', 'RepVGG']
 
