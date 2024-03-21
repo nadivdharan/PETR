@@ -30,6 +30,127 @@ from mmcv.utils import (ConfigDict, build_from_cfg, deprecated_api_warning,
 import copy
 import torch.utils.checkpoint as cp
 
+from typing import Optional, Tuple
+Tensor = torch.Tensor
+
+def _split_scaled_dot_product_attention(
+        query_split: list,
+        key_split: list,
+        value_split: list,
+        num_heads: int, 
+        num_split: int, 
+        attn_mask: Optional[Tensor] = None,
+        dropout_p: float = 0.0,
+) -> Tuple[Tensor, Tensor]:
+
+    tgt_len, bsz, embed_dim = query_split[0].size()
+    assert num_split * (num_heads // num_split) == num_heads, f"num_heads {num_heads} not divisible by num_split {num_split}"
+    head_dim = embed_dim // (num_heads // num_split)
+    assert head_dim * (num_heads // num_split) == embed_dim, f"embed_dim {embed_dim} not divisible by num_heads//num_splits {num_heads//num_split}"
+
+    if attn_mask is not None:
+        attn_mask_split = attn_mask.chunk(num_split)
+    attn = []
+    output = []
+    for i in range(num_split):
+        query_split[i] = query_split[i].view(tgt_len, bsz * num_heads // num_split , head_dim).transpose(0, 1)
+        query_split[i] = query_split[i] / math.sqrt(query_split[i].shape[-1])
+        key_split[i]   = key_split[i].view(-1, bsz * num_heads // num_split, head_dim).transpose(0, 1)
+        value_split[i] = value_split[i].view(-1, bsz * num_heads // num_split, head_dim).transpose(0, 1)
+        attn_split = torch.bmm(query_split[i], key_split[i].transpose(-2, -1))
+        if attn_mask is not None:
+            attn_split += attn_mask_split[i]
+        attn_split = F.softmax(attn_split, dim=-1)
+        if dropout_p > 0.0:
+            attn_split = F.dropout(attn_split, p=dropout_p)
+        output_split = torch.bmm(attn_split, value_split[i])
+        attn.append(attn_split)
+        output.append(output_split)
+
+    attn_output = torch.cat(output, dim=0)
+    attn_output_weights = torch.cat(attn, dim=0)
+
+    return attn_output, attn_output_weights
+
+class SplitPETRMultiheadAttention(nn.MultiheadAttention):
+    
+    def __init__(self,
+                 embed_dims,
+                 num_heads,
+                 dropout=0.,
+                 num_head_split=1,
+                 **kwargs):
+        super(SplitPETRMultiheadAttention, self).__init__(embed_dims,
+                                                          num_heads,
+                                                          dropout)
+        self.num_split = num_head_split
+    
+    def forward(self,
+                query: Tensor,
+                key: Tensor,
+                value: Tensor,
+                key_padding_mask: Optional[Tensor] = None,
+                need_weights: bool = True,
+                attn_mask: Optional[Tensor] = None,
+    ) -> Tuple[Tensor, Optional[Tensor]]:
+
+        num_heads = self.num_heads
+
+        in_proj_weight = self.state_dict()['in_proj_weight']
+        in_proj_bias = self.state_dict()['in_proj_bias']
+        out_proj_weight = self.state_dict()['out_proj.weight']
+        out_proj_bias = self.state_dict()['out_proj.bias']
+
+        
+        tgt_len, bsz, embed_dim = query.shape
+        src_len, _, _ = key.shape
+        head_dim = embed_dim // num_heads
+        assert head_dim * num_heads == embed_dim, f"embed_dim {embed_dim} not divisible by num_heads {num_heads}"
+        assert key.shape == value.shape, f"key shape {key.shape} does not match value shape {value.shape}"
+        
+        # input projection
+        q, k, v = F._in_projection_packed(query, key, value, in_proj_weight, in_proj_bias)
+
+        q = q.contiguous()
+        k = k.contiguous()
+        v = v.contiguous()
+
+        q_split = list(q.chunk(self.num_split, dim=-1))
+        k_split = list(k.chunk(self.num_split, dim=-1))
+        v_split = list(v.chunk(self.num_split, dim=-1))
+
+        # update source sequence length after adjustments
+        src_len = k.view(-1, bsz * num_heads, head_dim).transpose(0, 1).size(1)
+        
+        # merge key padding and attention masks
+        if key_padding_mask is not None:
+            assert key_padding_mask.shape == (bsz, src_len), \
+                f"expecting key_padding_mask shape of {(bsz, src_len)}, but got {key_padding_mask.shape}"
+            key_padding_mask = key_padding_mask.view(bsz, 1, 1, src_len).   \
+                expand(-1, num_heads, -1, -1).reshape(bsz * num_heads, 1, src_len)
+            if attn_mask is None:
+                attn_mask = key_padding_mask
+        
+        # convert mask to float
+        if attn_mask is not None and attn_mask.dtype == torch.bool:
+            new_attn_mask = torch.zeros_like(attn_mask, dtype=torch.float)
+            new_attn_mask.masked_fill_(attn_mask, float("-inf"))
+            attn_mask = new_attn_mask
+        
+        # adjust dropout probability
+        if not self.training:
+            self.dropout = 0.0
+
+        attn_output, attn_output_weights = _split_scaled_dot_product_attention(q_split, k_split, v_split, num_heads, self.num_split, attn_mask, self.dropout)
+        attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, embed_dim)
+        attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)
+        if need_weights:
+            # average attention weights over heads
+            attn_output_weights = attn_output_weights.view(bsz, num_heads, tgt_len, src_len)
+            return attn_output, attn_output_weights.sum(dim=1) / num_heads
+        else:
+            return attn_output, None
+
 @TRANSFORMER.register_module()
 class PETRTransformer(BaseModule):
     """Implements the DETR transformer.
@@ -242,6 +363,7 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                 attn_masks=None,
                 query_key_padding_mask=None,
                 key_padding_mask=None,
+                idx=None,
                 ):
         """Forward function for `TransformerCoder`.
         Returns:
@@ -256,6 +378,7 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                 attn_masks=attn_masks,
                 query_key_padding_mask=query_key_padding_mask,
                 key_padding_mask=key_padding_mask,
+                idx=idx
                 )
 
         return x
@@ -269,6 +392,7 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                 attn_masks=None,
                 query_key_padding_mask=None,
                 key_padding_mask=None,
+                idx=None,
                 **kwargs
                 ):
         """Forward function for `TransformerCoder`.
@@ -297,7 +421,8 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
             key_pos=key_pos,
             attn_masks=attn_masks,
             query_key_padding_mask=query_key_padding_mask,
-            key_padding_mask=key_padding_mask
+            key_padding_mask=key_padding_mask,
+            idx=idx
             )
         return x
 
@@ -330,6 +455,8 @@ class PETRMultiheadAttention(BaseModule):
                  dropout_layer=dict(type='Dropout', drop_prob=0.),
                  init_cfg=None,
                  batch_first=False,
+                 num_head_split=2,
+                 split_proj=False,
                  **kwargs):
         super(PETRMultiheadAttention, self).__init__(init_cfg)
         if 'dropout' in kwargs:
@@ -345,9 +472,24 @@ class PETRMultiheadAttention(BaseModule):
         self.num_heads = num_heads
         self.batch_first = batch_first
 
-        self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop,
-                                          **kwargs)
-
+        self.num_head_split = num_head_split
+        self.split_proj = split_proj
+        if num_head_split == 1:
+            self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop,
+                                            **kwargs)
+        else:
+            if split_proj:
+                self.attn_head_splits = nn.ModuleList([
+                    nn.MultiheadAttention(embed_dims//self.num_head_split,
+                                        num_heads//self.num_head_split,
+                                        attn_drop,
+                                        **kwargs) 
+                                        for _ in range(2*self.num_head_split)])
+            else:
+                self.attn = SplitPETRMultiheadAttention(embed_dims,
+                                                        num_heads,
+                                                        dropout=attn_drop,
+                                                        num_head_split=num_head_split)
         self.proj_drop = nn.Dropout(proj_drop)
         self.dropout_layer = build_dropout(
             dropout_layer) if dropout_layer else nn.Identity()
@@ -363,6 +505,7 @@ class PETRMultiheadAttention(BaseModule):
                 key_pos=None,
                 attn_mask=None,
                 key_padding_mask=None,
+                idx=None,
                 **kwargs):
         """Forward function for `MultiheadAttention`.
         **kwargs allow passing a more general data flow when combining
@@ -431,12 +574,71 @@ class PETRMultiheadAttention(BaseModule):
             key = key.transpose(0, 1)
             value = value.transpose(0, 1)
 
-        out = self.attn(
-            query=query,
-            key=key,
-            value=value,
-            attn_mask=attn_mask,
-            key_padding_mask=key_padding_mask)[0]
+        if self.num_head_split >= 1:
+            out = self.attn(
+                query=query,
+                key=key,
+                value=value,
+                attn_mask=attn_mask,
+                key_padding_mask=key_padding_mask)[0]
+        else:
+            # split multi-head (including split of input projections)
+            for split in self.attn_head_splits:
+                split.eval()
+                if query.device.type == 'cuda':
+                    split.eval().to(query.device)
+
+            assert len(query.size()) == 3, f"Expected query of dim=3 but got {len(query.size())}"
+            assert len(key.size())   == 3, f"Expected key of dim=3 but got {len(key.size())}"
+            assert len(value.size()) == 3, f"Expected value of dim=3 but got {len(value.size())}"
+
+            # attn_sd = self.attn.state_dict()
+            name = f"petr_mha_{idx}.pth"
+            attn_sd = torch.load(name, map_location=query.device)
+            print(f"{name} loaded")
+
+            w_q, w_k, w_v = attn_sd['in_proj_weight'].chunk(3)
+            b_q, b_k, b_v = attn_sd['in_proj_bias'].chunk(3)
+            w_out = attn_sd['out_proj.weight']
+            b_out = attn_sd['out_proj.bias']
+            b_out_split = torch.zeros(self.embed_dims//self.num_head_split)
+            w_out_split = torch.eye(self.embed_dims//self.num_head_split)
+
+            outs_splits = []
+            for i in range(self.num_head_split):
+                query_split = query[:, :, i*self.embed_dims//self.num_head_split:(i+1)*self.embed_dims//self.num_head_split]
+                key_split   = key  [:, :, i*self.embed_dims//self.num_head_split:(i+1)*self.embed_dims//self.num_head_split]
+                value_split = value[:, :, i*self.embed_dims//self.num_head_split:(i+1)*self.embed_dims//self.num_head_split]
+
+                for j in range(self.num_head_split):
+                    b_q_split   = b_q[j*self.embed_dims//self.num_head_split:(j+1)*self.embed_dims//self.num_head_split] / 2
+                    b_k_split   = b_k[j*self.embed_dims//self.num_head_split:(j+1)*self.embed_dims//self.num_head_split] / 2
+                    b_v_split   = b_v[j*self.embed_dims//self.num_head_split:(j+1)*self.embed_dims//self.num_head_split] / 2
+
+                    attn_split_sd = self.attn_head_splits[i*self.num_head_split+j].state_dict()
+
+                    # Input projection
+                    w_q_split = w_q.transpose(0,1)[i*self.embed_dims//self.num_head_split:(i+1)*self.embed_dims//self.num_head_split,
+                                                j*self.embed_dims//self.num_head_split:(j+1)*self.embed_dims//self.num_head_split].transpose(0,1)
+                    w_k_split = w_k.transpose(0,1)[i*self.embed_dims//self.num_head_split:(i+1)*self.embed_dims//self.num_head_split,
+                                                j*self.embed_dims//self.num_head_split:(j+1)*self.embed_dims//self.num_head_split].transpose(0,1)
+                    w_v_split = w_v.transpose(0,1)[i*self.embed_dims//self.num_head_split:(i+1)*self.embed_dims//self.num_head_split,
+                                                j*self.embed_dims//self.num_head_split:(j+1)*self.embed_dims//self.num_head_split].transpose(0,1)
+                    attn_split_sd['in_proj_weight'] = torch.cat([w_q_split, w_k_split, w_v_split])
+                    attn_split_sd['in_proj_bias']   = torch.cat([b_q_split, b_k_split, b_v_split])
+
+                    # Output projection
+                    attn_split_sd['out_proj.weight'] = w_out_split
+                    attn_split_sd['out_proj.bias']   = b_out_split
+
+                    self.attn_head_splits[i*self.num_head_split+j].load_state_dict(attn_split_sd)
+                    out_split = self.attn_head_splits[i*self.num_head_split+j](query=query_split,
+                                                                               key=key_split,
+                                                                               value=value_split)[0]
+                    outs_splits.append(out_split)
+            scaled_dot_attn_splits = torch.cat([outs_splits[0]+outs_splits[2], outs_splits[1]+outs_splits[3]], dim=2)
+            attn_split_output = F.linear(scaled_dot_attn_splits, w_out, b_out)
+            out = attn_split_output
 
         if self.batch_first:
             out = out.transpose(0, 1)
@@ -515,8 +717,8 @@ class PETRTransformerDecoder(TransformerLayerSequence):
             return x
 
         intermediate = []
-        for layer in self.layers:
-            query = layer(query, *args, **kwargs)
+        for idx, layer in enumerate(self.layers):
+            query = layer(query, *args, idx=idx, **kwargs)
             if self.return_intermediate:
                 if self.post_norm is not None:
                     intermediate.append(self.post_norm(query))
