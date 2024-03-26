@@ -37,7 +37,9 @@ model = dict(
         override_groups_map=None,
         out_indices=(2, 3),
         deploy=False,
-        pretrained = 'ckpts/RepVGG-A0-train.pth'
+        # pretrained = 'ckpts/RepVGG-A0-train.pth',
+        # pretrained = '/home/nadivd/workspace/PETR/training/repvgg_a0/latest.pth'
+        pretrained = None, 
         # num_classes=1000,
         # use_checkpoint=False
         ),
@@ -163,7 +165,8 @@ db_sampler = dict(
         file_client_args=file_client_args))
 ida_aug_conf = {
         "resize_lim": (0.47, 0.625),
-        "final_dim": (320, 800),
+        # "final_dim": (320, 800),
+        "final_dim": (256, 320),
         "bot_pct_lim": (0.0, 0.0),
         "rot_lim": (0.0, 0.0),
         "H": 900,

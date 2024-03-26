@@ -96,6 +96,39 @@ class PETRTransformer(BaseModule):
         target = torch.zeros_like(query_embed)
 
         # out_dec: [num_layers, num_query, bs, dim]
+        # import ipdb; ipdb.set_trace()
+        save_mlvl_feasts_and_pose_embed = True
+        # save_mlvl_feasts_and_pose_embed = False
+        if save_mlvl_feasts_and_pose_embed:
+            tgt_len, bsz, embed_dim = target.shape
+            assert bsz == bs
+            src_len = memory.size(0)
+            tmp_mlvl_feats = memory.permute(1, 2, 0).reshape(1, embed_dim, -1, src_len)
+            tmp_mlvl_feats = tmp_mlvl_feats.cpu().numpy()
+            tmp_pos_embed = pos_embed.permute(1, 2, 0).reshape(1, embed_dim, -1, src_len)
+            tmp_pos_embed = tmp_pos_embed.cpu().numpy()
+            import numpy as np
+            import os
+            calib_dir = './calib/'
+            idx = sorted([x for x in os.listdir(calib_dir) if x.startswith('input_pos_embed')])
+            idx_tmp = sorted([x for x in os.listdir(calib_dir) if x.startswith('input_mlvl_feats')])
+            # import ipdb; ipdb.set_trace()
+            if not len(idx):
+                assert not len(idx_tmp)
+                idx = 1
+            else:
+                assert len(idx_tmp)
+                idx = max([int(x.split('.npy')[0].split('input_pos_embed_')[-1]) for x in idx]) + 1
+                idx_tmp = max([int(x.split('.npy')[0].split('input_mlvl_feats_')[-1]) for x in idx_tmp]) + 1
+                assert idx == idx_tmp
+            print(f'INFO: Saving input_pos_embed and input_mlvl_feats {idx}...')
+            if idx <= 1024:
+                np.save(f'{calib_dir}input_pos_embed_{idx}.npy', tmp_pos_embed)
+                np.save(f'{calib_dir}input_mlvl_feats_{idx}.npy', tmp_mlvl_feats)
+            if idx == 1024:
+                print('INFO: Saved 1024 input_pos_embed and input_mlvl_feats !')
+                import ipdb; ipdb.set_trace()
+
         out_dec = self.decoder(
             query=target,
             key=memory,
@@ -515,12 +548,40 @@ class PETRTransformerDecoder(TransformerLayerSequence):
             return x
 
         intermediate = []
+        # save_input_masks = True
+        save_input_masks = False
         for layer in self.layers:
+            if save_input_masks:
+                assert 'key' in kwargs
+                assert 'key_padding_mask' in kwargs
+                tgt_len, bsz, embed_dim = query.shape
+                src_len = kwargs['key'].size(0)
+                num_heads = 8
+                input_masks = kwargs['key_padding_mask'].view(bsz, 1, 1, src_len).expand(-1, num_heads, -1, -1).reshape(bsz * num_heads, 1, src_len).expand(-1, tgt_len, -1)
+                input_masks = input_masks.permute(2, 0, 1).reshape(-1, 1, tgt_len*num_heads).permute(1, 2, 0).view(1, tgt_len*num_heads, 1, src_len)
+                input_masks = input_masks.cpu().numpy()
+                import numpy as np
+                import os
+                idx = sorted([x for x in os.listdir() if x.startswith('input_masks')])
+                # import ipdb; ipdb.set_trace()
+                if not(len(idx)):
+                    idx = 1
+                else:
+                    idx = max([int(x.split('.npy')[0].split('input_masks_')[-1]) for x in idx]) + 1
+                print(f'INFO: Saving input_masks {idx}...')
+                if idx <= 1024:
+                    # np.save(f'input_masks_{idx}.npy', input_masks)
+                    pass
+                if idx == 1024:
+                    print('INFO: Saved 1024 input masks !')
+                save_input_masks = False
+
             query = layer(query, *args, **kwargs)
             if self.return_intermediate:
                 if self.post_norm is not None:
                     intermediate.append(self.post_norm(query))
                 else:
                     intermediate.append(query)
+        # import ipdb; ipdb.set_trace()
         return torch.stack(intermediate)
 

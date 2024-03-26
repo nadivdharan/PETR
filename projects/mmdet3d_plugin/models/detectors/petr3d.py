@@ -194,9 +194,16 @@ class Petr3D(MVXTwoStageDetector):
         ]
         return bbox_results
     
-    def simple_test(self, img_metas, img=None, rescale=False):
+    def simple_test(self, img_metas, img=None, rescale=False, img_idx=None):
         """Test function without augmentaiton."""
-        img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        if img_idx is None:
+            img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        else:
+            folder = "/data/data/nadivd/PETR/repvgg_backbone_qunatized_outputs/"
+            bb_out = [torch.tensor(np.expand_dims(np.load(folder+f'repvgg_a0_out_{img_idx}.npy'), axis=0).transpose(0,1,4,3,2)).to(img.device),
+                    torch.zeros((1, 12, 256, 10, 25)).to(img.device)
+                    ]
+            img_feats = bb_out
 
         bbox_list = [dict() for i in range(len(img_metas))]
         bbox_pts = self.simple_test_pts(
