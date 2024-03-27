@@ -124,6 +124,7 @@ class PETRv2Head(AnchorFreeHead):
                  num_classes,
                  in_channels,
                  num_query=100,
+                 num_pred=6,
                  num_reg_fcs=2,
                  transformer=None,
                  sync_cls_avg_factor=False,
@@ -239,7 +240,7 @@ class PETRv2Head(AnchorFreeHead):
             f' and {num_feats}.'
         self.act_cfg = transformer.get('act_cfg',
                                        dict(type='ReLU', inplace=True))
-        self.num_pred = 6
+        self.num_pred = num_pred
         self.normedlinear = normedlinear
         self.with_fpe = with_fpe
         self.with_time = with_time
