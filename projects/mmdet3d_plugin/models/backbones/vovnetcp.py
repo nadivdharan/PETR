@@ -87,6 +87,16 @@ VoVNet99_eSE = {
     "dw": False
 }
 
+VoVNet99x32_eSE = {
+    'stem': [64, 64, 128],
+    "stage_conv_ch": [128, 160, 192, 224, 256],
+    "stage_out_ch": [256, 512, 768, 1024, 1280],
+    "layer_per_block": 5,
+    "block_per_stage": [1, 3, 9, 3, 1],
+    "eSE": True,
+    "dw": False
+}
+
 _STAGE_SPECS = {
     "V-19-slim-dw-eSE": VoVNet19_slim_dw_eSE,
     "V-19-dw-eSE": VoVNet19_dw_eSE,
@@ -95,6 +105,7 @@ _STAGE_SPECS = {
     "V-39-eSE": VoVNet39_eSE,
     "V-57-eSE": VoVNet57_eSE,
     "V-99-eSE": VoVNet99_eSE,
+    "V-99x32-eSE": VoVNet99x32_eSE,
 }
 
 
@@ -328,7 +339,7 @@ class VoVNetCP(BaseModule):
         in_ch_list = stem_out_ch + config_concat_ch[:-1]
         # OSA stages
         self.stage_names = []
-        for i in range(4):  # num_stages
+        for i in range(len(block_per_stage)):  # num_stages
             name = "stage%d" % (i + 2)  # stage 2 ... stage 5
             self.stage_names.append(name)
             self.add_module(
