@@ -1,0 +1,23 @@
+{
+    "NUM_DECODING_LAYERS": 6,
+    "OUTPUT_NAMES": [
+        "4118",
+        "4434",
+        "4750",
+        "5066",
+        "5382",
+        "5698"
+    ],
+    "INPUT_NAMES": [
+        "3763",
+        "3773"
+    ],
+    "MASK_NAMES": [
+        "4059"
+    ],
+    "NUM_SPLITS": 1,
+    "EMBED_DIM": 256,
+    "NUM_QUERY": 900,
+    "NUM_TOKENS": 12000,
+    "NUM_HEADS": 8
+}
