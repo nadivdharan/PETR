@@ -109,7 +109,7 @@ class PETRTransformer(BaseModule):
             tmp_pos_embed = tmp_pos_embed.cpu().numpy()
             import numpy as np
             import os
-            calib_dir = './calib/'
+            calib_dir = '/data/data/nadivd/PETR/calib/repvgg_a1_deocder_inputs/'
             idx = sorted([x for x in os.listdir(calib_dir) if x.startswith('input_pos_embed')])
             idx_tmp = sorted([x for x in os.listdir(calib_dir) if x.startswith('input_mlvl_feats')])
             # import ipdb; ipdb.set_trace()
@@ -121,13 +121,13 @@ class PETRTransformer(BaseModule):
                 idx = max([int(x.split('.npy')[0].split('input_pos_embed_')[-1]) for x in idx]) + 1
                 idx_tmp = max([int(x.split('.npy')[0].split('input_mlvl_feats_')[-1]) for x in idx_tmp]) + 1
                 assert idx == idx_tmp
-            print(f'INFO: Saving input_pos_embed and input_mlvl_feats {idx}...')
-            if idx <= 1024:
-                np.save(f'{calib_dir}input_pos_embed_{idx}.npy', tmp_pos_embed)
-                np.save(f'{calib_dir}input_mlvl_feats_{idx}.npy', tmp_mlvl_feats)
-            if idx == 1024:
-                print('INFO: Saved 1024 input_pos_embed and input_mlvl_feats !')
-                import ipdb; ipdb.set_trace()
+            # print(f'INFO: Saving input_pos_embed and input_mlvl_feats {idx}...')
+            # if idx <= 1024:
+            np.save(f'{calib_dir}input_pos_embed_{idx}.npy', tmp_pos_embed)
+            np.save(f'{calib_dir}input_mlvl_feats_{idx}.npy', tmp_mlvl_feats)
+            # if idx == 1024:
+            # print('INFO: Saved 1024 input_pos_embed and input_mlvl_feats !')
+            # import ipdb; ipdb.set_trace()
 
         out_dec = self.decoder(
             query=target,
