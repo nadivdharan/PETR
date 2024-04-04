@@ -163,6 +163,7 @@ class PETRv2Head(AnchorFreeHead):
                  with_fpe=False,
                  with_time=False,
                  with_multi=False,
+                 num_pred=6,
                  **kwargs):
         # NOTE here use `AnchorFreeHead` instead of `TransformerHead`,
         # since it brings inconvenience when the initialization of
@@ -239,7 +240,7 @@ class PETRv2Head(AnchorFreeHead):
             f' and {num_feats}.'
         self.act_cfg = transformer.get('act_cfg',
                                        dict(type='ReLU', inplace=True))
-        self.num_pred = 6
+        self.num_pred = num_pred
         self.normedlinear = normedlinear
         self.with_fpe = with_fpe
         self.with_time = with_time
