@@ -252,4 +252,4 @@ runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
 load_from='ckpts/fcos3d_vovnet_imgbackbone-remapped.pth'
 resume_from=None
 
-# mAP: 0.4025
+# mAP: 0.3924
