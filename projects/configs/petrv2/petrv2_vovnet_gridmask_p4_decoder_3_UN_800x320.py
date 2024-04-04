@@ -67,12 +67,12 @@ model = dict(
                         dict(
                             type='MultiheadAttention',
                             embed_dims=256,
-                            num_heads=8,
+                            num_heads=4,
                             dropout=0.1),
                         dict(
                             type='PETRMultiheadAttention',
                             embed_dims=256,
-                            num_heads=8,
+                            num_heads=4,
                             dropout=0.1),
                         ],
                     norm_cfg=dict(type='UN'),
