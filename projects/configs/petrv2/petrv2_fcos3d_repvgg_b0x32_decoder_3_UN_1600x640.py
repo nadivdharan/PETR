@@ -253,3 +253,24 @@ runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
 load_from='ckpts/fcos3d_repvgg_h2_epoch_12_remapped.pth'
 resume_from=None
 
+# mAP: 0.3446
+# mATE: 0.8071
+# mASE: 0.2763
+# mAOE: 0.5319
+# mAVE: 0.4746
+# mAAE: 0.1857
+# NDS: 0.4447
+# Eval time: 184.4s
+
+# Per-class results:
+# Object Class    AP      ATE     ASE     AOE     AVE     AAE
+# car     0.545   0.572   0.152   0.076   0.403   0.189
+# truck   0.300   0.857   0.227   0.125   0.373   0.209
+# bus     0.373   0.835   0.193   0.117   1.041   0.258
+# trailer 0.107   1.138   0.255   0.613   0.370   0.044
+# construction_vehicle    0.049   1.102   0.499   1.431   0.145 0.389
+# pedestrian      0.455   0.718   0.300   0.599   0.507   0.184
+# motorcycle      0.322   0.788   0.259   0.656   0.638   0.199
+# bicycle 0.307   0.731   0.279   1.001   0.320   0.013
+# traffic_cone    0.543   0.559   0.322   nan     nan     nan
+# barrier 0.445   0.771   0.277   0.168   nan     nan 
