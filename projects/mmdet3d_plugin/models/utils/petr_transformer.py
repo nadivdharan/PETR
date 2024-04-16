@@ -30,6 +30,8 @@ from mmcv.utils import (ConfigDict, build_from_cfg, deprecated_api_warning,
 import copy
 import torch.utils.checkpoint as cp
 
+from .split_attn import SplitPETRMultiheadAttention
+
 @TRANSFORMER.register_module()
 class PETRTransformer(BaseModule):
     """Implements the DETR transformer.
@@ -297,7 +299,7 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
             key_pos=key_pos,
             attn_masks=attn_masks,
             query_key_padding_mask=query_key_padding_mask,
-            key_padding_mask=key_padding_mask
+            key_padding_mask=key_padding_mask,
             )
         return x
 
@@ -330,6 +332,7 @@ class PETRMultiheadAttention(BaseModule):
                  dropout_layer=dict(type='Dropout', drop_prob=0.),
                  init_cfg=None,
                  batch_first=False,
+                 num_head_split=1,
                  **kwargs):
         super(PETRMultiheadAttention, self).__init__(init_cfg)
         if 'dropout' in kwargs:
@@ -345,9 +348,15 @@ class PETRMultiheadAttention(BaseModule):
         self.num_heads = num_heads
         self.batch_first = batch_first
 
-        self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop,
-                                          **kwargs)
-
+        self.num_head_split = num_head_split
+        if num_head_split == 1:
+            self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop,
+                                            **kwargs)
+        else:
+            self.attn = SplitPETRMultiheadAttention(embed_dims,
+                                                    num_heads,
+                                                    dropout=attn_drop,
+                                                    num_head_split=num_head_split)
         self.proj_drop = nn.Dropout(proj_drop)
         self.dropout_layer = build_dropout(
             dropout_layer) if dropout_layer else nn.Identity()
