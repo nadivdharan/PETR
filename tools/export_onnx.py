@@ -117,7 +117,7 @@ def main(device='cpu'):
         img = data['img'][0].data[0].to(device)
         if args.split == 'transformer':
             B, N, C, H, W = img.shape
-            out_stride = 16 if not cfg.model.pts_bbox_head.position_level else 32
+            out_stride = 16
             C = cfg.model.pts_bbox_head.in_channels
             N = 2 * args.ncams
             img = [torch.zeros(B, N, C, H//out_stride, W//out_stride),
