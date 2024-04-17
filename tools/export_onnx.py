@@ -51,8 +51,10 @@ def parse_args():
     parser.add_argument('config', help='model config path')
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('-o', '--opset', type=int, default=13)
+    parser.add_argument('--ncams', type=int, default=6, help='Number of cameras')
+    parser.add_argument('--mha-groups', type=int, default=4, help='How many groups to split the multi attention heads into')
     parser.add_argument('--split', default='transformer', type=str, help="Split and export backbone / transformer part of model",
-                        choices=['backbone', 'transformer'])
+                        choices=['backbone', 'transformer'], required=True)
     parser.add_argument('--out_name', default='petr_v2.onnx', type=str, help="Name for the onnx output")
     args = parser.parse_args()
     return args
@@ -60,6 +62,9 @@ def parse_args():
 
 def main(device='cpu'):
     args = parse_args()
+
+    if args.ncams > 6:
+        raise ValueError(f"Maximum number of cameras is 6 but got {args.ncam}")
 
     cfg = Config.fromfile(args.config)
     cfg.model.pretrained = None
@@ -90,6 +95,8 @@ def main(device='cpu'):
                 plg_lib = importlib.import_module(_module_path)
 
     # build the model and load checkpoint
+    cfg.model.pts_bbox_head.transformer.decoder.\
+        transformerlayers.attn_cfgs[1].num_head_split = args.mha_groups
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
     fp16_cfg = cfg.get('fp16', None)
     if fp16_cfg is not None:
@@ -111,11 +118,16 @@ def main(device='cpu'):
         if args.split == 'transformer':
             B, N, C, H, W = img.shape
             out_stride = 16
-            C = cfg.model.img_neck.out_channels
+            C = cfg.model.pts_bbox_head.in_channels
+            N = 2 * args.ncams
             img = [torch.zeros(B, N, C, H//out_stride, W//out_stride),
                    torch.zeros(B, N, C, H//(2*out_stride), W//(2*out_stride))]
-        break
     
+            if img[0].shape[1] < 12:
+                for k, v in img_metas[0][0].items():
+                    if isinstance(v, list):
+                        img_metas[0][0][k] = v[:img[0].shape[1]]
+        break
     # convert img metas to torch tensors
     keys_to_remove = []
     for i in range(len(img_metas)):

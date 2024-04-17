@@ -491,7 +491,7 @@ class PETRv2Head(AnchorFreeHead):
             for img_meta in img_metas:    
                 time_stamps.append(np.asarray(img_meta['timestamp']))
             time_stamp = x.new_tensor(time_stamps)
-            time_stamp = time_stamp.view(batch_size, -1, 6)
+            time_stamp = time_stamp.view(batch_size, -1, num_cams//2)
             mean_time_stamp = (time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
         
         outputs_classes = []
