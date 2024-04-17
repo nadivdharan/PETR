@@ -52,6 +52,7 @@ def parse_args():
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('-o', '--opset', type=int, default=13)
     parser.add_argument('--ncams', type=int, default=6, help='Number of cameras')
+    parser.add_argument('--img-dims', nargs=2, type=int, default=None, metavar=('height','width'), help='Change input resolution (height, width). Overrides cfg values')
     parser.add_argument('--mha-groups', type=int, default=4, help='How many groups to split the multi attention heads into')
     parser.add_argument('--split', default='transformer', type=str, help="Split and export backbone / transformer part of model",
                         choices=['backbone', 'transformer'], required=True)
@@ -95,6 +96,10 @@ def main(device='cpu'):
                 plg_lib = importlib.import_module(_module_path)
 
     # build the model and load checkpoint
+    if args.img_dims is not None:
+        print(f'Changing input resolution from'
+              f' {cfg.ida_aug_conf.final_dim} to {tuple(args.img_dims)}')
+        cfg.data.test.pipeline[2]['data_aug_conf']['final_dim'] = args.img_dims
     cfg.model.pts_bbox_head.transformer.decoder.\
         transformerlayers.attn_cfgs[1].num_head_split = args.mha_groups
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
