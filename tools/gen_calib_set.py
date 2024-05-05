@@ -55,28 +55,6 @@ class DecoderInputs(BaseModule):
         tmp_pos_embed = tmp_pos_embed.cpu().detach().numpy()
 
         return tmp_pos_embed, tmp_mlvl_feats
-    
-        # calib_dir = '/data/data/nadivd/PETR/calib/repvgg_a1_deocder_inputs/'
-        # idx = sorted([x for x in os.listdir(calib_dir) if x.startswith('input_pos_embed')])
-        # idx_tmp = sorted([x for x in os.listdir(calib_dir) if x.startswith('input_mlvl_feats')])
-        # # import ipdb; ipdb.set_trace()
-        # if not len(idx):
-        #     assert not len(idx_tmp)
-        #     idx = 1
-        # else:
-        #     assert len(idx_tmp)
-        #     idx = max([int(x.split('.npy')[0].split('input_pos_embed_')[-1]) for x in idx]) + 1
-        #     idx_tmp = max([int(x.split('.npy')[0].split('input_mlvl_feats_')[-1]) for x in idx_tmp]) + 1
-        #     assert idx == idx_tmp
-        # # print(f'INFO: Saving input_pos_embed and input_mlvl_feats {idx}...')
-        # # if idx <= 1024:
-        # np.save(f'{calib_dir}input_pos_embed_{idx}.npy', tmp_pos_embed)
-        # np.save(f'{calib_dir}input_mlvl_feats_{idx}.npy', tmp_mlvl_feats)
-        # # if idx == 1024:
-        # # print('INFO: Saved 1024 input_pos_embed and input_mlvl_feats !')
-        # # import ipdb; ipdb.set_trace()
-        
-        return
 
 
 class CalibGenerator(Petr3D):
@@ -91,17 +69,13 @@ class CalibGenerator(Petr3D):
                 raise TypeError('{} must be a list, but got {}'.format(
                     name, type(var)))
         img = [img] if img is None else img
-        # import ipdb; ipdb.set_trace()
         return self.simple_test(img_metas[0], img[0], **kwargs)
     
     def simple_test(self, img_metas, img=None, **kwargs):
         """Test function without augmentaiton."""
         img = img.to(self.device)
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
-        # pos_embed, mlvl_feats = self.pts_bbox_head(img_feats, img_metas)
-        # return pos_embed, mlvl_feats
 
-    # def pts_bbox_head(self, mlvl_feats, img_metas):
         x = img_feats[self.pts_bbox_head.position_level]
         batch_size, num_cams = x.size(0), x.size(1)
 
@@ -166,11 +140,7 @@ def parse_args():
     parser.add_argument('--calib-set-size', type=int, default=1024, help='calibration set size')
     parser.add_argument('--save-dir', type=str, default=None, help='Folder to save calibration sets')
     parser.add_argument('--net-name', type=str, default=None, help='Model name')
-    # parser.add_argument('--local_rank', type=int, default=0)
-    # parser.add_argument('--dist', action='store_true')
     args = parser.parse_args()
-    # if 'LOCAL_RANK' not in os.environ:
-    #     os.environ['LOCAL_RANK'] = str(args.local_rank)
     return args
 
 
@@ -247,7 +217,6 @@ def main(device='cuda:0'):
         img_npy = img[0,0].cpu().numpy().transpose(1,2,0)
         shape = img_npy.shape
         calib_data = img_npy.reshape(1, *shape)
-        # calib_set['backbone'].append(calib_data)
 
         assert cfg.model.pts_bbox_head.position_level in [0, 1]
         bb_stride = 16 if cfg.model.pts_bbox_head.position_level==0 else 32
@@ -258,7 +227,7 @@ def main(device='cuda:0'):
             calib_set['backbone'] = np.zeros((calib_set_size, *shape))
             calib_set['transformer']['pos_embed'] = np.zeros((calib_set_size, 1, tokens, embed_dims))
             calib_set['transformer']['mlvl_feats'] = np.zeros((calib_set_size, 1, tokens, embed_dims))
-        # calib_model(**data)
+
         pos_embed, mlvl_feats = calib_model(img_metas=data['img_metas'][0].data, img=data['img'][0].data)
 
         calib_set['backbone'][i] = calib_data
@@ -285,14 +254,11 @@ def main(device='cuda:0'):
     np.savez(calib_transformer_path, **calib_set_transformer)
 
     print(f"Calibration sets saved at:\nBackbone: {calib_backbone_path}\nTransformer: {calib_transformer_path}\n")
-
-
     return
 
 
 if __name__ == "__main__":
     main()
-
 
 """
 This script needs to be run from the PETR/ folder, e.g.
