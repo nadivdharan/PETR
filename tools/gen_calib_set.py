@@ -137,6 +137,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('config', help='model config path')
     parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--img-dims', nargs=2, type=int, default=None, metavar=('height','width'), help='Change input resolution (height, width). Overrides cfg values')
     parser.add_argument('--calib-set-size', type=int, default=1024, help='calibration set size')
     parser.add_argument('--save-dir', type=str, default=None, help='Folder to save calibration sets')
     parser.add_argument('--net-name', type=str, default=None, help='Model name')
@@ -175,6 +176,10 @@ def main(device='cuda:0'):
 
     
 
+    if args.img_dims is not None:
+        print(f'Changing input resolution from'
+              f' {cfg.ida_aug_conf.final_dim} to {tuple(args.img_dims)}')
+        cfg.data.test.pipeline[2]['data_aug_conf']['final_dim'] = args.img_dims
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
     fp16_cfg = cfg.get('fp16', None)
     if fp16_cfg is not None:
@@ -218,8 +223,10 @@ def main(device='cuda:0'):
         shape = img_npy.shape
         calib_data = img_npy.reshape(1, *shape)
 
-        assert cfg.model.pts_bbox_head.position_level in [0, 1]
-        bb_stride = 16 if cfg.model.pts_bbox_head.position_level==0 else 32
+        bb_stride = 16
+        if hasattr(cfg.model.pts_bbox_head, 'position_level'):
+            assert cfg.model.pts_bbox_head.position_level in [0, 1]
+            bb_stride = 16 if cfg.model.pts_bbox_head.position_level==0 else 32
         tokens = int((shape[0]/bb_stride) * (shape[1]/bb_stride) * (6*2))
         embed_dims =cfg.model.pts_bbox_head.transformer.decoder.transformerlayers.attn_cfgs[0].embed_dims
 
@@ -262,8 +269,10 @@ if __name__ == "__main__":
 
 """
 This script needs to be run from the PETR/ folder, e.g.
-/workspace/PETR$ CUDA_VISIBLE_DEVICES=4 python3 /data/data/nadivd/PETR/calib/gen_calib_set.py projects/configs/petrv2/petrv2_fcos3d_repvgg_h2x32_decoder_3_UN_800x320.py ~/workspace/PETR/training/fcos3d_repvgg_h2/petrv2_fcos3d_repvgg_h2x32_decoder_3_UN_800x320/latest.pth
-                   --calib-set-size 1024
-                   --save-dir /data/data/nadivd/PETR/calib/fcos3d_repvgg_b0/
-                   --net-name petrv2_repvgg_b0_transformer_x32_decoder_3_UN_800x320_split_1_const0
+/workspace/PETR$ CUDA_VISIBLE_DEVICES=4 python3 tools/gen_calib_set.py
+                    projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_decoder_3_UN_1600x640.py 
+                    work_dirs/petrv2_fcos3d_repvgg_b0x32_decoder_3_UN_1600x640/latest.pth 
+                   --calib-set-size 1024 
+                   --save-dir ./calib_set/
+                   --net-name petrv2_repvgg_b0_transformer_x32_decoder_3_UN_800x320
 """
