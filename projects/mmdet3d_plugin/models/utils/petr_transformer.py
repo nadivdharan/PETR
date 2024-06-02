@@ -30,6 +30,8 @@ from mmcv.utils import (ConfigDict, build_from_cfg, deprecated_api_warning,
 import copy
 import torch.utils.checkpoint as cp
 
+from .split_attn import SplitPETRMultiheadAttention
+
 @TRANSFORMER.register_module()
 class PETRTransformer(BaseModule):
     """Implements the DETR transformer.
@@ -49,7 +51,7 @@ class PETRTransformer(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self, encoder=None, decoder=None, init_cfg=None, cross=False):
+    def __init__(self, encoder=None, decoder=None, init_cfg=None, cross=False, input_norm=False):
         super(PETRTransformer, self).__init__(init_cfg=init_cfg)
         if encoder is not None:
             self.encoder = build_transformer_layer_sequence(encoder)
@@ -58,6 +60,12 @@ class PETRTransformer(BaseModule):
         self.decoder = build_transformer_layer_sequence(decoder)
         self.embed_dims = self.decoder.embed_dims
         self.cross = cross
+        self.batch_norms = None
+        if input_norm:
+            self.batch_norms = nn.ModuleList([
+                nn.BatchNorm1d(num_features=self.embed_dims),
+                nn.BatchNorm1d(num_features=self.embed_dims)
+            ])
 
     def init_weights(self):
         # follow the official DETR to init parameters
@@ -94,6 +102,9 @@ class PETRTransformer(BaseModule):
             1, bs, 1)  # [num_query, dim] -> [num_query, bs, dim]
         mask = mask.view(bs, -1)  # [bs, n, h, w] -> [bs, n*h*w]
         target = torch.zeros_like(query_embed)
+        if self.batch_norms is not None:
+            pos_embed = self.batch_norms[0].to(pos_embed.device)(pos_embed.permute(1, 2, 0)).permute(2, 0, 1)
+            memory = self.batch_norms[1].to(memory.device)(memory.permute(1, 2, 0)).permute(2, 0, 1)
 
         # out_dec: [num_layers, num_query, bs, dim]
         out_dec = self.decoder(
@@ -297,7 +308,7 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
             key_pos=key_pos,
             attn_masks=attn_masks,
             query_key_padding_mask=query_key_padding_mask,
-            key_padding_mask=key_padding_mask
+            key_padding_mask=key_padding_mask,
             )
         return x
 
@@ -330,6 +341,8 @@ class PETRMultiheadAttention(BaseModule):
                  dropout_layer=dict(type='Dropout', drop_prob=0.),
                  init_cfg=None,
                  batch_first=False,
+                 num_head_split=1,
+                 keys_norm=False,
                  **kwargs):
         super(PETRMultiheadAttention, self).__init__(init_cfg)
         if 'dropout' in kwargs:
@@ -345,9 +358,18 @@ class PETRMultiheadAttention(BaseModule):
         self.num_heads = num_heads
         self.batch_first = batch_first
 
-        self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop,
-                                          **kwargs)
-
+        self.num_head_split = num_head_split
+        if num_head_split > 1 and keys_norm:
+            raise ValueError("MHA split with CA keys BN not supported just yet")
+        elif num_head_split == 1 and not keys_norm:
+            self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop,
+                                            **kwargs)
+        else:
+            self.attn = SplitPETRMultiheadAttention(embed_dims,
+                                                    num_heads,
+                                                    dropout=attn_drop,
+                                                    num_head_split=num_head_split,
+                                                    keys_norm=keys_norm)
         self.proj_drop = nn.Dropout(proj_drop)
         self.dropout_layer = build_dropout(
             dropout_layer) if dropout_layer else nn.Identity()
