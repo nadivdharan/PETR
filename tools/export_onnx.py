@@ -15,16 +15,17 @@ from mmdet3d.models import build_detector
 
 sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
 from projects.mmdet3d_plugin.models.detectors.petr3d import Petr3D
-from projects.mmdet3d_plugin.models.dense_heads.petr_head import PETRHead
-from projects.mmdet3d_plugin.models.dense_heads.petrv2_head import PETRv2Head
 
 
 class Petr3D_Split(Petr3D):
-    def __init__(self, split=None, cfg_dict=None):
+    def __init__(self, split=None, cfg_dict=None, petr_version='v2'):
         super(Petr3D_Split, self).__init__(**cfg_dict)
         self.onnx_split_choices = ['backbone', 'transformer']
         assert split in self.onnx_split_choices, f"{split} is not one of {self.onnx_split_choices}"
         self.split = split
+        self.petr_version_choices = ['v1', 'v2']
+        assert petr_version in ['v1', 'v2'], f"{petr_version} is not one of {self.petr_version_choices}"
+        self.petr_version = petr_version
     
     def forward(self, x, img_metas):
         for var, name in [(img_metas, 'img_metas')]:
@@ -41,15 +42,15 @@ class Petr3D_Split(Petr3D):
     def foward_backbone(self, img, img_metas):
         img = [img] if img is None else img
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
-        if isinstance(self.pts_bbox_head, PETRHead):
+        if self.petr_version == 'v1':
             # For PETR-v1 features projection is included in backbone
             x = img_feats[self.pts_bbox_head.position_level]
             x = self.pts_bbox_head.input_proj(x.flatten(0,1))
             return x
-        elif isinstance(self.pts_bbox_head, PETRv2Head):
+        elif self.petr_version == 'v2':
             return img_feats
         else:
-            raise ValueError(f"Detection head {type(self.pts_bbox_head)} unrecognized. Expected one of {[PETRHead, PETRv2Head]}")
+            raise ValueError(f"Unsupported {self.petr_version} PETR version. Valid values are {self.petr_version_choices}")
 
     def foward_transformer(self, img_feats, img_metas):
         outs = self.pts_bbox_head(img_feats, img_metas)
@@ -177,7 +178,7 @@ def main(device='cpu'):
     # split backbone / transformer part of model
     from projects.mmdet3d_plugin.models.backbones.repvgg import RepVGG, repvgg_model_convert
     cfg.model.pop('type')
-    split_model = Petr3D_Split(args.split, cfg.model)
+    split_model = Petr3D_Split(args.split, cfg.model, args.petr_version)
     split_model.load_state_dict(model.state_dict())    
     if isinstance(split_model.img_backbone, RepVGG):
         img_backbone_deploy = repvgg_model_convert(model.img_backbone)
