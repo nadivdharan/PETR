@@ -24,7 +24,7 @@ class Petr3D_Split(Petr3D):
         assert split in self.onnx_split_choices, f"{split} is not one of {self.onnx_split_choices}"
         self.split = split
         self.petr_version_choices = ['v1', 'v2']
-        assert petr_version in ['v1', 'v2'], f"{petr_version} is not one of {self.petr_version_choices}"
+        assert petr_version in self.petr_version_choices, f"{petr_version} is not one of {self.petr_version_choices}"
         self.petr_version = petr_version
     
     def forward(self, x, img_metas):
