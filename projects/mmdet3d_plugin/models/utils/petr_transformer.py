@@ -116,7 +116,6 @@ class PETRTransformer(BaseModule):
             key_padding_mask=mask,
             reg_branch=reg_branch,
             )
-        # out_dec = out_dec.transpose(1, 2)
         memory = memory.reshape(n, h, w, bs, c).permute(3, 0, 4, 1, 2)
         return  out_dec, memory
 
