@@ -51,7 +51,7 @@ class PETRTransformer(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self, encoder=None, decoder=None, init_cfg=None, cross=False):
+    def __init__(self, encoder=None, decoder=None, init_cfg=None, cross=False, input_norm=False):
         super(PETRTransformer, self).__init__(init_cfg=init_cfg)
         if encoder is not None:
             self.encoder = build_transformer_layer_sequence(encoder)
@@ -60,6 +60,12 @@ class PETRTransformer(BaseModule):
         self.decoder = build_transformer_layer_sequence(decoder)
         self.embed_dims = self.decoder.embed_dims
         self.cross = cross
+        self.batch_norms = None
+        if input_norm:
+            self.batch_norms = nn.ModuleList([
+                nn.BatchNorm1d(num_features=self.embed_dims),
+                nn.BatchNorm1d(num_features=self.embed_dims)
+            ])
 
     def init_weights(self):
         # follow the official DETR to init parameters
@@ -96,6 +102,9 @@ class PETRTransformer(BaseModule):
             1, bs, 1)  # [num_query, dim] -> [num_query, bs, dim]
         mask = mask.view(bs, -1)  # [bs, n, h, w] -> [bs, n*h*w]
         target = torch.zeros_like(query_embed)
+        if self.batch_norms is not None:
+            pos_embed = self.batch_norms[0].to(pos_embed.device)(pos_embed.permute(1, 2, 0)).permute(2, 0, 1)
+            memory = self.batch_norms[1].to(memory.device)(memory.permute(1, 2, 0)).permute(2, 0, 1)
 
         # out_dec: [num_layers, num_query, bs, dim]
         out_dec = self.decoder(
