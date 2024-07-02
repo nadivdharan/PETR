@@ -540,8 +540,5 @@ class PETRTransformerDecoder(TransformerLayerSequence):
                     intermediate.append(self.post_norm(query))
                 else:
                     intermediate.append(query)
-        return intermediate
-        # return torch.cat(intermediate, axis=-1)
-        # return torch.stack(intermediate)
-        # return torch.stack([intermediate[-1]])
+        return torch.stack(intermediate)
 
