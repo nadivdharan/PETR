@@ -18,11 +18,14 @@ from projects.mmdet3d_plugin.models.detectors.petr3d import Petr3D
 
 
 class Petr3D_Split(Petr3D):
-    def __init__(self, split=None, cfg_dict=None):
+    def __init__(self, split=None, cfg_dict=None, petr_version='v2'):
         super(Petr3D_Split, self).__init__(**cfg_dict)
         self.onnx_split_choices = ['backbone', 'transformer']
         assert split in self.onnx_split_choices, f"{split} is not one of {self.onnx_split_choices}"
         self.split = split
+        self.petr_version_choices = ['v1', 'v2']
+        assert petr_version in self.petr_version_choices, f"{petr_version} is not one of {self.petr_version_choices}"
+        self.petr_version = petr_version
     
     def forward(self, x, img_metas):
         for var, name in [(img_metas, 'img_metas')]:
@@ -39,7 +42,15 @@ class Petr3D_Split(Petr3D):
     def foward_backbone(self, img, img_metas):
         img = [img] if img is None else img
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
-        return img_feats
+        if self.petr_version == 'v1':
+            # For PETR-v1 features projection is included in backbone
+            x = img_feats[self.pts_bbox_head.position_level]
+            x = self.pts_bbox_head.input_proj(x.flatten(0,1))
+            return x
+        elif self.petr_version == 'v2':
+            return img_feats
+        else:
+            raise ValueError(f"Unsupported {self.petr_version} PETR version. Valid values are {self.petr_version_choices}")
 
     def foward_transformer(self, img_feats, img_metas):
         outs = self.pts_bbox_head(img_feats, img_metas)
@@ -56,6 +67,7 @@ def parse_args():
     parser.add_argument('--mha-groups', type=int, default=4, help='How many groups to split the multi attention heads into')
     parser.add_argument('--split', default='transformer', type=str, help="Split and export backbone / transformer part of model",
                         choices=['backbone', 'transformer'], required=True)
+    parser.add_argument('--petr-version', default='v2', type=str, help="PETR version", choices=['v1', 'v2'])
     parser.add_argument('--out_name', default='petr_v2.onnx', type=str, help="Name for the onnx output")
     args = parser.parse_args()
     return args
@@ -99,7 +111,9 @@ def main(device='cpu'):
     if args.img_dims is not None:
         print(f'Changing input resolution from'
               f' {cfg.ida_aug_conf.final_dim} to {tuple(args.img_dims)}')
-        cfg.data.test.pipeline[2]['data_aug_conf']['final_dim'] = args.img_dims
+        ind = [i for (i,x) in enumerate(cfg.data.test.pipeline)
+                if x['type']=='ResizeCropFlipImage'][0]
+        cfg.data.test.pipeline[ind]['data_aug_conf']['final_dim'] = args.img_dims
     cfg.model.pts_bbox_head.transformer.decoder.\
         transformerlayers.attn_cfgs[1].num_head_split = args.mha_groups
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
@@ -124,7 +138,12 @@ def main(device='cpu'):
             B, N, C, H, W = img.shape
             out_stride = 16
             C = cfg.model.pts_bbox_head.in_channels
-            N = 2 * args.ncams
+            if args.petr_version == 'v1':
+                N = 1 * args.ncams
+            elif args.petr_version == 'v2':
+                N = 2 * args.ncams
+            else:
+                raise ValueError(f"Unrecognized PETR version {args.petr_version}")
             img = [torch.zeros(B, N, C, H//out_stride, W//out_stride),
                    torch.zeros(B, N, C, H//(2*out_stride), W//(2*out_stride))]
     
@@ -159,7 +178,7 @@ def main(device='cpu'):
     # split backbone / transformer part of model
     from projects.mmdet3d_plugin.models.backbones.repvgg import RepVGG, repvgg_model_convert
     cfg.model.pop('type')
-    split_model = Petr3D_Split(args.split, cfg.model)
+    split_model = Petr3D_Split(args.split, cfg.model, args.petr_version)
     split_model.load_state_dict(model.state_dict())    
     if isinstance(split_model.img_backbone, RepVGG):
         img_backbone_deploy = repvgg_model_convert(model.img_backbone)
