@@ -453,13 +453,16 @@ class PETRv2Head(AnchorFreeHead):
         if self.with_position:
             coords_position_embeding, _ = self.position_embeding(mlvl_feats, img_metas, masks)
             if self.with_fpe:
-                coords_position_embeding = self.fpe(coords_position_embeding.flatten(0,1), x.flatten(0,1)).view(x.size())
+                # coords_position_embeding = self.fpe(coords_position_embeding.flatten(0,1), x.flatten(0,1)).view(x.size())
+                coords_position_embeding = self.fpe(coords_position_embeding.flatten(0,1), x.flatten(0,1))
 
-            pos_embed = coords_position_embeding
+            # pos_embed = coords_position_embeding
+            pos_embed = coords_position_embeding.permute(1,2,0,3).flatten(2,3).unsqueeze(0)
 
             if self.with_multiview:
                 sin_embed = self.positional_encoding(masks)
-                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).view(x.size())
+                # sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).view(x.size())
+                sin_embed = self.adapt_pos3d(sin_embed.permute(0,2,3,1,4).flatten(3,4))
                 pos_embed = pos_embed + sin_embed
             else:
                 pos_embeds = []

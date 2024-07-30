@@ -66,6 +66,7 @@ class PETRTransformer(BaseModule):
                 nn.BatchNorm1d(num_features=self.embed_dims),
                 nn.BatchNorm1d(num_features=self.embed_dims)
             ])
+            self.bn = nn.BatchNorm2d(num_features=self.embed_dims)
 
     def init_weights(self):
         # follow the official DETR to init parameters
@@ -97,13 +98,16 @@ class PETRTransformer(BaseModule):
         """
         bs, n, c, h, w = x.shape
         memory = x.permute(1, 3, 4, 0, 2).reshape(-1, bs, c) # [bs, n, c, h, w] -> [n*h*w, bs, c]
-        pos_embed = pos_embed.permute(1, 3, 4, 0, 2).reshape(-1, bs, c) # [bs, n, c, h, w] -> [n*h*w, bs, c]
+        # pos_embed = pos_embed.permute(1, 3, 4, 0, 2).reshape(-1, bs, c) # [bs, n, c, h, w] -> [n*h*w, bs, c]
         query_embed = query_embed.unsqueeze(1).repeat(
             1, bs, 1)  # [num_query, dim] -> [num_query, bs, dim]
         mask = mask.view(bs, -1)  # [bs, n, h, w] -> [bs, n*h*w]
         target = torch.zeros_like(query_embed)
         if self.batch_norms is not None:
-            pos_embed = self.batch_norms[0].to(pos_embed.device)(pos_embed.permute(1, 2, 0)).permute(2, 0, 1)
+            # pos_embed = self.batch_norms[0].to(pos_embed.device)(pos_embed.permute(1, 2, 0)).permute(2, 0, 1)
+            # bn = nn.BatchNorm2d(num_features=self.embed_dims)
+            self.bn.load_state_dict(self.batch_norms[0].state_dict())
+            pos_embed = self.bn.to(pos_embed.device)(pos_embed).flatten(2,3).permute(2,0,1)
             memory = self.batch_norms[1].to(memory.device)(memory.permute(1, 2, 0)).permute(2, 0, 1)
 
         # out_dec: [num_layers, num_query, bs, dim]
