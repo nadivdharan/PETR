@@ -150,23 +150,23 @@ In order to do so you need a working model-zoo environment.
 Choose the corresponding YAMLs from our networks configuration directory, i.e. ``hailo_model_zoo/cfg/networks/petrv2_repvggB0_transformer_pp_800x320.yaml``\ and run parsing, optimization and compilation using the model zoo. 
 
 
-* Backbone
-.. raw:: html
-   :name:validation
+#. Backbone
+   .. raw:: html
+     :name:validation
 
-   <code stage="compile">
-   hailomz compile --ckpt <span val="local_path_to_onnx">petrv2_backbone.onnx</span> --calib-path <span val="calib_set_path">/path/to/calibration/imgs/dir/</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_backbone_pp_800x320.yaml</span> <span val="replace_none">--start-node-names name1 name2</span> <span val="replace_none">--end-node-names name1</span>
-   </code>
-
-
-* | ``--ckpt`` - path to your ONNX file.
-* | ``--calib-path`` - path to a directory with your calibration images in JPEG/png format
-* | ``--yaml`` - path to your configuration YAML file.
-* | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
-* | The model zoo will take care of adding the input normalization to be part of the model.
+      <code stage="compile">
+      hailomz compile --ckpt <span val="local_path_to_onnx">petrv2_backbone.onnx</span> --calib-path <span val="calib_set_path">/path/to/calibration/imgs/dir/</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_backbone_pp_800x320.yaml</span> <span val="replace_none">--start-node-names name1 name2</span> <span val="replace_none">--end-node-names name1</span>
+      </code>
 
 
-* Transformer
+  * | ``--ckpt`` - path to your ONNX file.
+  * | ``--calib-path`` - path to a directory with your calibration images in JPEG/png format
+  * | ``--yaml`` - path to your configuration YAML file.
+  * | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
+  * | The model zoo will take care of adding the input normalization to be part of the model.
+
+
+#. Transformer
 
    * Parsing 
    .. raw:: html
