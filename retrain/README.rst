@@ -151,6 +151,7 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
 
 
 #. Backbone
+
    .. raw:: html
      :name:validation
 
@@ -159,11 +160,11 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
       </code>
 
 
-  * | ``--ckpt`` - path to your ONNX file.
-  * | ``--calib-path`` - path to a directory with your calibration images in JPEG/png format
-  * | ``--yaml`` - path to your configuration YAML file.
-  * | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
-  * | The model zoo will take care of adding the input normalization to be part of the model.
+   * | ``--ckpt`` - path to your ONNX file.
+   * | ``--calib-path`` - path to a directory with your calibration images in JPEG/png format
+   * | ``--yaml`` - path to your configuration YAML file.
+   * | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
+   * | The model zoo will take care of adding the input normalization to be part of the model.
 
 
 #. Transformer
