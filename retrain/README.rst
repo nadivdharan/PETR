@@ -122,7 +122,7 @@ Training and exporting to ONNX
 * | ``--out`` - output onnx file path
 * | ``--reshape-cfg`` - .json file with node names and config info for further reshape of the transformer export e.g., ``tools/onnx_reshape_cfg_repvgg_b0x32_BN2D_decoder_3_q_304_UN_800x320.json`` for the model we use here
 
-**NOTE:**\  Exporting the transformer also produces the ``reference_points.npy`` postprocessing configuration file.
+   **NOTE:**\  Exporting the transformer also produces the ``reference_points.npy`` postprocessing configuration file.
 
 #. Generate calibration sets
 
