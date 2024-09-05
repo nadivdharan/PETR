@@ -135,9 +135,9 @@ Training and exporting to ONNX
       python tools/gen_calib_set.py <cfg.py> <trained.pth> --calib-set-size 64 --save-dir <save_dir> --net-name petrv2_repvggB0_transformer_pp_800x320
       </code></pre>
 
-* | ``--calib-set-size`` size of calibration set
-* | ``--save-dir`` path to folder to save calibration sets
-* | ``--net-name`` name of model in Hailo Model Zoo
+  * | ``--calib-set-size`` size of calibration set
+  * | ``--save-dir`` path to folder to save calibration sets
+  * | ``--net-name`` name of model in Hailo Model Zoo
 
 
 ----
