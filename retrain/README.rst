@@ -169,7 +169,7 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
 
 #. Transformer
 
-   * Parsing 
+   #. Parsing 
    .. raw:: html
       :name:validation
 
@@ -180,7 +180,7 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
    * | ``--ckpt`` - path to your ONNX file.
    * | ``--yaml`` - path to your configuration YAML file
 
-   * Optimization
+   #. Optimization
    .. raw:: html
       :name:validation
 
@@ -192,7 +192,7 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
    * | ``--calib-set-path`` - path to transformer calibration set generated in the calibration stage above
    * | ``--model-script`` - path to model script for optimization
 
-   * Compilation
+   #. Compilation
    .. raw:: html
       :name:validation
 
