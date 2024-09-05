@@ -158,6 +158,7 @@ Compile the Model using Hailo Model Zoo
 
 | Optimization
 .. raw:: html
+   :name:validation
    <code stage="optimize">
    hailo optimize --har petrv2_repvggB0_transformer_pp_800x320.har --model-script </path/to/petrv2_repvggB0_transformer_pp_800x320.alls> --calib-set-path </path/to/transformer_calib_set>
    </code>
