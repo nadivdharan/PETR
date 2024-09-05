@@ -151,7 +151,6 @@ Compile the Model using Hailo Model Zoo
 
 |
 * Backbone
-|
 .. raw:: html
    :name:validation
 
@@ -168,9 +167,8 @@ Compile the Model using Hailo Model Zoo
 
 |
 * Transformer
-|
 
-   * Parsing 
+   #. Parsing 
    .. raw:: html
       :name:validation
 
@@ -181,7 +179,7 @@ Compile the Model using Hailo Model Zoo
    * | ``--ckpt`` - path to your ONNX file.
    * | ``--yaml`` - path to your configuration YAML file
 
-   * Optimization
+   #. Optimization
    .. raw:: html
       :name:validation
 
@@ -193,7 +191,7 @@ Compile the Model using Hailo Model Zoo
    * | ``--calib-set-path`` - path to transformer calibration set generated in the calibration stage above
    * | ``--model-script`` - path to model script for optimization
 
-   * Compilation
+   #. Compilation
    .. raw:: html
       :name:validation
 
