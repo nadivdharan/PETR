@@ -138,6 +138,8 @@ Training and exporting to ONNX
 * | ``--save-dir`` path to folder to save calibration sets
 * | ``--net-name`` name of model in Hailo Model Zoo
 
+#. Check
+
 ----
 
 Compile the Model using Hailo Model Zoo
