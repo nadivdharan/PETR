@@ -150,7 +150,7 @@ Compile the Model using Hailo Model Zoo
 | Choose the corresponding YAMLs from our networks configuration directory, i.e. ``hailo_model_zoo/cfg/networks/petrv2_repvggB0_transformer_pp_800x320.yaml``\ and run parsing, optimization and compilation using the model zoo. 
 
 |
-#. Backbone
+* Backbone
 |
    .. raw:: html
    :name:validation
@@ -167,7 +167,7 @@ Compile the Model using Hailo Model Zoo
    * | The model zoo will take care of adding the input normalization to be part of the model.
 
 |
-#. Transformer
+* Transformer
 |
 
    | Parsing 
