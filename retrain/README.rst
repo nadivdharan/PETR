@@ -149,7 +149,9 @@ Compile the Model using Hailo Model Zoo
 
 | Parsing 
 .. raw:: html
-   <code stage="optimize">
+   :name:validation
+
+   <code stage="parse">
    hailomz parse --ckpt <span val="local_path_to_onnx">petrv2_transformer.onnx</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_transformer_pp_800x320.yaml</span>
    </code>
 
@@ -159,6 +161,7 @@ Compile the Model using Hailo Model Zoo
 | Optimization
 .. raw:: html
    :name:validation
+
    <code stage="optimize">
    hailo optimize --har petrv2_repvggB0_transformer_pp_800x320.har --model-script </path/to/petrv2_repvggB0_transformer_pp_800x320.alls> --calib-set-path </path/to/transformer_calib_set>
    </code>
