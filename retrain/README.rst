@@ -145,11 +145,11 @@ Training and exporting to ONNX
 Compile the Model using Hailo Model Zoo
 ---------------------------------------
 
-| You can generate an HEF file for inference on Hailo-8 from your trained ONNX model.
-| In order to do so you need a working model-zoo environment.
-| Choose the corresponding YAMLs from our networks configuration directory, i.e. ``hailo_model_zoo/cfg/networks/petrv2_repvggB0_transformer_pp_800x320.yaml``\ and run parsing, optimization and compilation using the model zoo. 
+You can generate an HEF file for inference on Hailo-8 from your trained ONNX model.
+In order to do so you need a working model-zoo environment.
+Choose the corresponding YAMLs from our networks configuration directory, i.e. ``hailo_model_zoo/cfg/networks/petrv2_repvggB0_transformer_pp_800x320.yaml``\ and run parsing, optimization and compilation using the model zoo. 
 
-|
+
 * Backbone
 .. raw:: html
    :name:validation
@@ -165,10 +165,10 @@ Compile the Model using Hailo Model Zoo
 * | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
 * | The model zoo will take care of adding the input normalization to be part of the model.
 
-|
+
 * Transformer
 
-   #. Parsing 
+   * Parsing 
    .. raw:: html
       :name:validation
 
@@ -179,7 +179,7 @@ Compile the Model using Hailo Model Zoo
    * | ``--ckpt`` - path to your ONNX file.
    * | ``--yaml`` - path to your configuration YAML file
 
-   #. Optimization
+   * Optimization
    .. raw:: html
       :name:validation
 
@@ -191,7 +191,7 @@ Compile the Model using Hailo Model Zoo
    * | ``--calib-set-path`` - path to transformer calibration set generated in the calibration stage above
    * | ``--model-script`` - path to model script for optimization
 
-   #. Compilation
+   * Compilation
    .. raw:: html
       :name:validation
 
