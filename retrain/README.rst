@@ -149,6 +149,10 @@ Compile the Model using Hailo Model Zoo
 | In order to do so you need a working model-zoo environment.
 | Choose the corresponding YAMLs from our networks configuration directory, i.e. ``hailo_model_zoo/cfg/networks/petrv2_repvggB0_transformer_pp_800x320.yaml``\ and run parsing, optimization and compilation using the model zoo. 
 
+|
+| Transformer |
+|
+
 | Parsing 
 .. raw:: html
    :name:validation
