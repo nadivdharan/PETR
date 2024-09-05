@@ -116,13 +116,13 @@ Training and exporting to ONNX
       python tools/export_onnx.py <cfg.py> <trained.pth> --split transformer --out petrv2_transformer.onnx --reshape-cfg tools/onnx_reshape_cfg_repvgg_b0x32_BN2D_decoder_3_q_304_UN_800x320.json
       </code></pre>
     
-  * ``cfg.py`` - model config file path e.g., ``projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_BN_q_304_decoder_3_UN_800x320.py``
-  * ``trained.pth`` - the trained model file path e.g., ``work_dirs/petrv2_exp0/latest.pth``
-  * ``--split`` - backbone or transformer export
-  * ``--out`` - output onnx file path
-  * ``--reshape-cfg`` - .json file with node names and config info for further reshape of the transformer export e.g., ``tools/onnx_reshape_cfg_repvgg_b0x32_BN2D_decoder_3_q_304_UN_800x320.json`` for the model we use here
+   * ``cfg.py`` - model config file path e.g., ``projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_BN_q_304_decoder_3_UN_800x320.py``
+   * ``trained.pth`` - the trained model file path e.g., ``work_dirs/petrv2_exp0/latest.pth``
+   * ``--split`` - backbone or transformer export
+   * ``--out`` - output onnx file path
+   * ``--reshape-cfg`` - .json file with node names and config info for further reshape of the transformer export e.g., ``tools/onnx_reshape_cfg_repvgg_b0x32_BN2D_decoder_3_q_304_UN_800x320.json`` for the model we use here
 
-.. **NOTE:**\  Exporting the transformer also produces the ``reference_points.npy`` postprocessing configuration file.
+   .. **NOTE:**\  Exporting the transformer also produces the ``reference_points.npy`` postprocessing configuration file.
 
 #. Generate calibration sets
 
@@ -134,11 +134,11 @@ Training and exporting to ONNX
       cd /workspace/PETR
       python tools/gen_calib_set.py <cfg.py> <trained.pth> --calib-set-size 64 --save-dir <save_dir> --net-name petrv2_repvggB0_transformer_pp_800x320
       </code></pre>
+
 * | ``--calib-set-size`` size of calibration set
 * | ``--save-dir`` path to folder to save calibration sets
 * | ``--net-name`` name of model in Hailo Model Zoo
 
-#. Check
 
 ----
 
