@@ -81,7 +81,7 @@ Training and exporting to ONNX
                |   |-- mmdet3d_nuscenes_30f_infos_train.pkl
 
 
-   The path for the dataset can be configured in the .py config file, e.g. ``projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_BN_q_304_decoder_3_UN_800x320.py``. It is recommended to symlink to the dataset to ``/workspace/PETR/data/``.
+   The path for the dataset can be configured via the config file, e.g. ``projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_BN_q_304_decoder_3_UN_800x320.py``. It is recommended to generate a symlink of the dataset to ``/workspace/PETR/data/``.
 
 #. Training:
 
