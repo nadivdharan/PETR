@@ -66,7 +66,7 @@ def parse_args():
     parser.add_argument('--save-dir', type=str, default=None, help='Folder to save calibration sets')
     parser.add_argument('--net-name', type=str, default=None, help='Model name')
     parser.add_argument('--gen-calib-set', action='store_true',
-                        help='Generate NPZ calibration set for transformer holding backbone and 3d coordinates positional embedding data')
+                        help='Generate NPZ calibration set for transformer holding backbone feature maps and 3d coordinates positional embedding data')
     args = parser.parse_args()
     return args
 
