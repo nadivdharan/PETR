@@ -126,7 +126,7 @@ Training and exporting to ONNX
 
 #. Generate 3D positional embedding data
 
-   Run the following script to generate the 3D coordinates positional embeddings (.npy) for the transformer model:
+   Run the following script to generate the 3D coordinates positional embeddings (.npy files) for the transformer model:
 
    .. raw:: html
       
