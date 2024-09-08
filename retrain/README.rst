@@ -176,6 +176,7 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
       hailomz compile --ckpt <span val="local_path_to_onnx">petrv2_transformer.onnx</span> --calib-path <span val="calib_set_path">/path/to/calibration_set</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_transformer_pp_800x320.yaml</span> <span val="replace_none">--start-node-names name1 name2</span> <span val="replace_none">--end-node-names name1</span>
       </code>
 
+   * | ``--ckpt`` - path to your ONNX file.
    * | ``--calib-set-path`` - path to transformer calibration set in tfrecord format
    * | ``--yaml`` - path to your configuration YAML file
    * | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
