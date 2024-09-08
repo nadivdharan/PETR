@@ -171,6 +171,7 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
 
    .. raw:: html
      :name:validation
+
       <code stage="compile">
       hailomz compile --ckpt <span val="local_path_to_onnx">petrv2_transformer.onnx</span> --calib-path <span val="calib_set_path">/path/to/calibration_set</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_transformer_pp_800x320.yaml</span> <span val="replace_none">--start-node-names name1 name2</span> <span val="replace_none">--end-node-names name1</span>
       </code>
