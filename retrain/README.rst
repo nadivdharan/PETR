@@ -169,39 +169,15 @@ Choose the corresponding YAMLs from our networks configuration directory, i.e. `
 
 #. Transformer
 
-   * Parsing 
    .. raw:: html
-      :name:validation
-
-      <code stage="parse">
-      hailomz parse --ckpt <span val="local_path_to_onnx">petrv2_transformer.onnx</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_transformer_pp_800x320.yaml</span>
-      </code>
-
-   * | ``--ckpt`` - path to your ONNX file.
-   * | ``--yaml`` - path to your configuration YAML file
-
-   * Optimization
-   .. raw:: html
-      :name:validation
-
-      <code stage="optimize">
-      hailo optimize --har petrv2_repvggB0_transformer_pp_800x320.har --model-script </path/to/petrv2_repvggB0_transformer_pp_800x320.alls> --calib-set-path </path/to/transformer_calib_set>
-      </code>
-
-   * | ``--har`` - path to your parsed HAR file from the pervious step.
-   * | ``--calib-set-path`` - path to transformer calibration set generated in the calibration stage above
-   * | ``--model-script`` - path to model script for optimization
-
-   * Compilation
-   .. raw:: html
-      :name:validation
-
+     :name:validation
       <code stage="compile">
-      hailomz compile --har petrv2_repvggB0_transformer_pp_800x320_optimized.har --calib-path <span val="calib_set_path">/path/to/calibration/dir/</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_transformer_pp_800x320.yaml</span>
+      hailomz compile --ckpt <span val="local_path_to_onnx">petrv2_transformer.onnx</span> --calib-path <span val="calib_set_path">/path/to/calibration_set</span> --yaml <span val="yaml_file_path">path/to/petrv2_repvggB0_transformer_pp_800x320.yaml</span> <span val="replace_none">--start-node-names name1 name2</span> <span val="replace_none">--end-node-names name1</span>
       </code>
 
-   * | ``--har`` - path to your optimized HAR file from the pervious step.
+   * | ``--calib-set-path`` - path to transformer calibration set in tfrecord format
    * | ``--yaml`` - path to your configuration YAML file
+   * | ``--start-node-names`` and ``--end-node-names`` - node names for customizing parsing behavior (optional).
 
 
 .. note::
