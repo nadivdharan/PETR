@@ -124,21 +124,16 @@ Training and exporting to ONNX
 
    .. **NOTE:**\  Exporting the transformer also produces the ``reference_points.npy`` postprocessing configuration file.
 
-#. Generate calibration sets
+#. Generate 3D positional embedding data
 
-   Run the following script to generate calibration sets for the backbone (.npy) and transformer (.npz) models:
+   Run the following script to generate the 3D coordinates positional embeddings (.npy) for the transformer model:
 
    .. raw:: html
       
       <pre><code>
       cd /workspace/PETR
-      python tools/gen_calib_set.py <cfg.py> <trained.pth> --calib-set-size 64 --save-dir <save_dir> --net-name petrv2_repvggB0_transformer_pp_800x320
+      python tools/gen_coords3d_pe.py <cfg.py> <trained.pth>
       </code></pre>
-
-   * | ``--calib-set-size`` size of calibration set
-   * | ``--save-dir`` path to folder to save calibration sets
-   * | ``--net-name`` name of model in Hailo Model Zoo
-
 
 ----
 
