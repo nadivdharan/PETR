@@ -10,17 +10,24 @@ import numpy as np
 import os
 import mmcv
 import tqdm
+
+MAX_NUM = 1024
+
 sensors = ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_RIGHT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_FRONT_LEFT']
 info_prefix = 'train'
 # info_prefix = 'val'
 # info_prefix = 'test'
-data_root = "/data/Dataset/nuScenes/"
+# data_root = "/data/Dataset/nuScenes/"
+data_root = '/fastdata/data/nuscenes/nuesence/'
 num_prev = 5  ###nummber of previous key frames
 num_sweep = 5  ###nummber of sweep frames between two key frame
 
 # info_path = os.path.join(data_root,'nuscenes_infos_30f_infos_{}.pkl'.format(info_prefix))
-info_path = os.path.join(data_root,'mmdet3d_nuscenes_30f_infos_{}.pkl'.format(info_prefix))
-key_infos = pickle.load(open(os.path.join(data_root,'nuscenes_infos_{}.pkl'.format(info_prefix)), 'rb'))
+# info_path = '/fastdata/users/nadivd/nuscenes/mmdet3d_nuscenes_30f_infos_{}_2024_08_21.pkl'.format(info_prefix)
+# info_path = '/fastdata/users/nadivd/nuscenes/mmdet3d_nuscenes_30f_infos_{}_{}_images_2024_08_21.pkl'.format(info_prefix, MAX_NUM)
+info_path = '/fastdata/users/nadivd/nuscenes/mmdet3d_nuscenes_30f_infos_{}_{}_images_2024_09_10.pkl'.format(info_prefix, MAX_NUM)
+# key_infos = pickle.load(open(os.path.join(data_root,'nuscenes_infos_{}.pkl'.format(info_prefix)), 'rb'))
+key_infos = pickle.load(open('/fastdata/users/nadivd/nuscenes/nuscenes_infos_{}.pkl'.format(info_prefix), 'rb'))
 if info_prefix == 'test':
     nuscenes_version = 'v1.0-test'
 else:
@@ -77,7 +84,9 @@ def add_frame(sample_data, e2g_t, l2e_t, l2e_r_mat, e2g_r_mat):
 
     return sweep_cam
 
-for current_id in tqdm.tqdm(range(len(key_infos['infos']))):
+for current_id in tqdm.tqdm(range(len(key_infos['infos'])), total=min(len(key_infos['infos']), MAX_NUM)):
+    if current_id > MAX_NUM:
+        break
     ###parameters of current key frame 
     e2g_t = key_infos['infos'][current_id]['ego2global_translation']
     e2g_r = key_infos['infos'][current_id]['ego2global_rotation']
@@ -118,5 +127,11 @@ for current_id in tqdm.tqdm(range(len(key_infos['infos']))):
             sweep_cams[cam] = sweep_cam
         sweep_lists.append(sweep_cams)
     key_infos['infos'][current_id]['sweeps'] = sweep_lists
+    # import ipdb; ipdb.set_trace()
 
-mmcv.dump(key_infos, info_path)
+tmp_key_infos = {
+    'infos': key_infos['infos'][:MAX_NUM],
+    'metadata': key_infos['metadata']
+    }
+mmcv.dump(tmp_key_infos, info_path)
+# mmcv.dump(key_infos, info_path)
