@@ -22,7 +22,7 @@ Environment Preparations
 
       <pre><code stage="docker_build">
       cd <span val="dockerfile_path">hailo_model_zoo/training/petr</span>
-      docker build -t petr:v2 --build-arg timezone=`cat /etc/timezone` .
+      docker build -t petr:v2 --build-arg timezone=`cat /etc/timezone` --build-arg user="username" .
       </code></pre>
 
    | the following optional arguments can be passed via --build-arg:
