@@ -1046,7 +1046,7 @@ NUSCENES
 
    .. code-block::
 
-      python hailo_model_zoo/datasets/create_nuscenes_tfrecord.py calib --ann_file <annotation_file.pkl>
-      python hailo_model_zoo/datasets/create_nuscenes_tfrecord.py val --ann_file <annotation_file.pkl>
+      python hailo_model_zoo/datasets/create_nuscenes_tfrecord.py calib --ann_file <train_annotation_file.pkl>
+      python hailo_model_zoo/datasets/create_nuscenes_tfrecord.py val --ann_file <val_annotation_file.pkl>
 
-   where <annotation_file.pkl> is the .pkl file generated from the PETR training environment.
+   where <*_annotation_file.pkl> is the .pkl annotation file generated from the PETR training environment.
