@@ -1003,8 +1003,9 @@ Manual Download
 .. _NUSCENES:
 
 NUSCENES
+------------
 
-#. Download the dataset from `here <https://www.nuscenes.org/download>_` and extract.
+#. Download the dataset from `here <https://www.nuscenes.org/download>`_ and extract.
 #. The expected dataset structure:
 
    .. code-block::
