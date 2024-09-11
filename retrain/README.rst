@@ -82,6 +82,15 @@ Training and exporting to ONNX
 
 
    The path for the dataset can be configured via the config file, e.g. ``projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_BN_q_304_decoder_3_UN_800x320.py``. It is recommended to generate a symlink of the dataset to ``/workspace/PETR/data/``.
+   In order to generate the .pkl train / val annotation files, use the scripts (detailed info can be found `here <https://github.com/open-mmlab/mmdetection3d/blob/1.0/docs/en/data_preparation.md#nuscenes>`_):
+
+   .. raw:: html
+      :name:validation
+
+      <pre><code stage="retrain">
+      python tools/create_data.py nuscenes --root-path <data_path> --out-dir <data_path> --extra-tag nuscenes
+      python tools/generate_sweep_pkl.py
+      </code></pre>
 
 #. Training:
 
