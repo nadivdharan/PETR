@@ -88,7 +88,7 @@ Training and exporting to ONNX
       :name:validation
 
       <pre><code stage="retrain">
-      python tools/create_data.py nuscenes --root-path &lt;data_path&gt; --out-dir `<data_path>` --extra-tag nuscenes
+      python tools/create_data.py nuscenes --root-path &lt;data_path&gt; --out-dir &lt;data_path&gt; --extra-tag nuscenes
       python tools/generate_sweep_pkl.py
       </code></pre>
 
@@ -116,13 +116,13 @@ Training and exporting to ONNX
 
       <pre><code stage="export">
       cd /workspace/PETR
-      python tools/export_onnx.py <cfg.py> <trained.pth> --split backbone --out petrv2_backbone.onnx
+      python tools/export_onnx.py &lt;cfg.py&gt; &lt;trained.pth&gt; --split backbone --out petrv2_backbone.onnx
       </code></pre>
 
       Run the following script to export the transformer part of the model:
 
       <pre><code stage="export">  
-      python tools/export_onnx.py <cfg.py> <trained.pth> --split transformer --out petrv2_transformer.onnx --reshape-cfg tools/onnx_reshape_cfg_repvgg_b0x32_BN2D_decoder_3_q_304_UN_800x320.json
+      python tools/export_onnx.py &lt;cfg.py&gt; &lt;trained.pth&gt; --split transformer --out petrv2_transformer.onnx --reshape-cfg tools/onnx_reshape_cfg_repvgg_b0x32_BN2D_decoder_3_q_304_UN_800x320.json
       </code></pre>
     
    * | ``cfg.py`` - model config file path e.g., ``projects/configs/petrv2/petrv2_fcos3d_repvgg_b0x32_BN_q_304_decoder_3_UN_800x320.py``
@@ -141,7 +141,7 @@ Training and exporting to ONNX
       
       <pre><code>
       cd /workspace/PETR
-      python tools/gen_coords3d_pe.py <cfg.py> <trained.pth>
+      python tools/gen_coords3d_pe.py &lt;cfg.py&gt; &lt;trained.pth&gt;
       </code></pre>
 
 ----
