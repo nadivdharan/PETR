@@ -88,7 +88,7 @@ Training and exporting to ONNX
       :name:validation
 
       <pre><code stage="retrain">
-      python tools/create_data.py nuscenes --root-path `<data_path>` --out-dir `<data_path>` --extra-tag nuscenes
+      python tools/create_data.py nuscenes --root-path `\<data_path\>` --out-dir `<data_path>` --extra-tag nuscenes
       python tools/generate_sweep_pkl.py
       </code></pre>
 
